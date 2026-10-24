@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/robotiq/robotiq-ros",
+  "commit": "be8aa38abb2f84e85adb9d6862092b9dfc0124c5",
+  "license": "BSD-3-Clause",
+  "files": [
+    "grippers/robotiq_description/meshes/visual/2f_85/robotiq_base.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/left_knuckle.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/right_knuckle.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/left_inner_knuckle.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/right_inner_knuckle.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/left_finger.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/right_finger.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/left_finger_tip.dae",
+    "grippers/robotiq_description/meshes/visual/2f_85/right_finger_tip.dae",
+    "grippers/robotiq_description/meshes/collision/2f_85/robotiq_base.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/left_knuckle.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/right_knuckle.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/left_inner_knuckle.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/right_inner_knuckle.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/left_finger.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/right_finger.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/left_finger_tip.stl",
+    "grippers/robotiq_description/meshes/collision/2f_85/right_finger_tip.stl",
+    "LICENSE",
+    "grippers/robotiq_description/urdf/robotiq_2f_85_macro.urdf.xacro"
+  ]
+}

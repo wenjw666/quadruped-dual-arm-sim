@@ -1,0 +1,331 @@
+Panels:
+- Class: rviz_common/Displays
+  Name: Displays
+- Class: rviz_common/Views
+  Name: Views
+Visualization Manager:
+  Class: ''
+  Global Options:
+    Background Color: 23; 29; 39
+    Fixed Frame: odom
+    Frame Rate: 15
+  Displays:
+  - Class: rviz_default_plugins/Grid
+    Name: Ground reference
+    Enabled: true
+    Cell Size: 0.5
+    Plane Cell Count: 24
+    Color: 65; 78; 93
+  - Class: rviz_default_plugins/RobotModel
+    Name: B2 + dual Aubo
+    Enabled: true
+    Description Source: Topic
+    Description Topic:
+      Value: /robot_description
+      Depth: 2
+      History Policy: Keep Last
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+    Collision Enabled: false
+    Visual Enabled: true
+  - Class: rviz_default_plugins/MarkerArray
+    Name: Task / backend / reference stations
+    Enabled: true
+    Topic:
+      Value: /viz/markers
+      Depth: 2
+      History Policy: Keep Last
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+  - Class: rviz_common/Group
+    Name: 01 Navigation
+    Enabled: true
+    Displays:
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Obstacle / inflation grid
+      Enabled: true
+      Topic:
+        Value: /viz/grids
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+    - Class: rviz_default_plugins/Map
+      Name: Occupancy texture (optional)
+      Enabled: false
+      Topic:
+        Value: /map
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.45
+      Color Scheme: map
+      Draw Behind: true
+    - Class: rviz_default_plugins/Map
+      Name: Local cost texture (optional)
+      Enabled: false
+      Topic:
+        Value: /local_costmap/costmap
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.5
+      Color Scheme: costmap
+    - Class: rviz_default_plugins/Map
+      Name: Global costs (optional)
+      Enabled: false
+      Topic:
+        Value: /global_costmap/costmap
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.35
+      Color Scheme: costmap
+    - Class: rviz_default_plugins/Path
+      Name: Global plan - cyan
+      Enabled: true
+      Topic:
+        Value: /viz/global_plan
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color: 40; 195; 255
+      Line Style: Billboards
+      Line Width: 0.035
+      Buffer Length: 1
+    - Class: rviz_default_plugins/Path
+      Name: Executed base path - green
+      Enabled: true
+      Topic:
+        Value: /viz/actual_path
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color: 70; 235; 155
+      Line Style: Billboards
+      Line Width: 0.035
+      Buffer Length: 1
+    - Class: rviz_default_plugins/Path
+      Name: MPPI transformed plan
+      Enabled: true
+      Topic:
+        Value: /transformed_global_plan
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+      Color: 255; 195; 55
+      Line Style: Billboards
+      Line Width: 0.022
+      Buffer Length: 1
+    - Class: rviz_default_plugins/MarkerArray
+      Name: MPPI selected / sampled rollouts
+      Enabled: true
+      Topic:
+        Value: /trajectories
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+    - Class: rviz_default_plugins/Polygon
+      Name: Collision footprint
+      Enabled: true
+      Topic:
+        Value: /local_costmap/published_footprint
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+      Color: 255; 100; 80
+    - Class: rviz_default_plugins/Pose
+      Name: Arm approach goal
+      Enabled: true
+      Topic:
+        Value: /task/goal
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+      Color: 255; 110; 90
+      Shaft Length: 0.25
+      Shaft Radius: 0.02
+      Head Length: 0.08
+      Head Radius: 0.05
+  - Class: rviz_common/Group
+    Name: 02 Manipulation
+    Enabled: true
+    Displays:
+    - Class: rviz_default_plugins/Path
+      Name: Planned left tool path - purple
+      Enabled: true
+      Topic:
+        Value: /viz/planned_tool_path
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color: 205; 130; 255
+      Line Style: Billboards
+      Line Width: 0.02
+      Buffer Length: 1
+    - Class: rviz_default_plugins/Path
+      Name: Measured left tool path - gold
+      Enabled: true
+      Topic:
+        Value: /viz/tool_path
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color: 255; 200; 75
+      Line Style: Billboards
+      Line Width: 0.02
+      Buffer Length: 1
+    - Class: rviz_default_plugins/MarkerArray
+      Name: RGB-D targets
+      Enabled: true
+      Topic:
+        Value: /perception/markers
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+  - Class: rviz_common/Group
+    Name: 03 Mapping
+    Enabled: true
+    Displays:
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LIVO colored scan / odom aligned (2 s)
+      Enabled: true
+      Topic:
+        Value: /cloud_registered
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (m): 0.025
+      Size (Pixels): 2
+      Color Transformer: RGB8
+      Position Transformer: XYZ
+      Channel Name: rgb
+      Axis: Z
+      Decay Time: 2
+      Use Fixed Frame: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Measured geometry / height
+      Enabled: true
+      Topic:
+        Value: /mapping/cloud
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (m): 0.025
+      Size (Pixels): 2
+      Color Transformer: AxisColor
+      Position Transformer: XYZ
+      Channel Name: rgb
+      Axis: Z
+      Decay Time: 0
+      Use Fixed Frame: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Raw Mid360 scan
+      Enabled: false
+      Topic:
+        Value: /livox/lidar_PointCloud2
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (m): 0.025
+      Size (Pixels): 2
+      Color Transformer: AxisColor
+      Position Transformer: XYZ
+      Channel Name: rgb
+      Axis: Z
+      Decay Time: 0
+      Use Fixed Frame: true
+    - Class: rviz_default_plugins/Path
+      Name: LIVO estimated path (diagnostic)
+      Enabled: true
+      Topic:
+        Value: /path
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+      Color: 225; 110; 240
+      Line Style: Billboards
+      Line Width: 0.02
+      Buffer Length: 1
+  - Class: rviz_common/Group
+    Name: 04 Cameras
+    Enabled: true
+    Displays:
+    - Class: rviz_default_plugins/Image
+      Name: RGB-D detection
+      Enabled: true
+      Topic:
+        Value: /perception/debug
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+    - Class: rviz_default_plugins/Image
+      Name: Factory overview
+      Enabled: true
+      Topic:
+        Value: /overview/image_raw
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+    - Class: rviz_default_plugins/Image
+      Name: Raw camera (optional)
+      Enabled: false
+      Topic:
+        Value: /camera/image_raw
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+  - Class: rviz_default_plugins/TF
+    Name: TF axes (optional)
+    Enabled: false
+    Show Names: false
+    Show Axes: true
+    Show Arrows: false
+    Marker Scale: 0.1
+  Tools:
+  - Class: rviz_default_plugins/MoveCamera
+  - Class: rviz_default_plugins/Interact
+  - Class: rviz_default_plugins/FocusCamera
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 6.2
+      Focal Point:
+        X: 1.1
+        Y: -0.25
+        Z: 0.55
+      Pitch: 0.7
+      Yaw: 0.95
+      Name: Algorithm overview
+      Target Frame: odom
+Window Geometry:
+  Height: 950
+  Width: 1500
+  X: 70
+  Y: 40
+  Displays:
+    collapsed: false
+  Views:
+    collapsed: true

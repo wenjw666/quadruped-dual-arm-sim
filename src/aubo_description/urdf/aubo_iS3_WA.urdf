@@ -1,0 +1,226 @@
+<?xml version="1.0"?>
+<robot name="aubo_iS3_WA">
+  <dh_type type="modified" />
+  <friction_coeff value="0.65" />
+  <link name="link0">
+    <inertial>
+      <origin xyz="0.000356 0.006663 0.022371" rpy="0 0 0" />
+      <mass value="0.555303" />
+      <inertia ixx="0.001067" ixy="0" ixz="-0.000001" iyy="0.000858" iyz="0.000061" izz="0.001514" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link0.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link0.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link1">
+    <inertial>
+      <origin xyz="-0.000016 0.002025 -0.016503" rpy="0 0 0" />
+      <mass value="2.437524" />
+      <inertia ixx="0.003865" ixy="0.000002" ixz="-0.000002" iyy="0.003841" iyz="0.000103" izz="0.00273" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link1.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint1" type="revolute">
+    <origin xyz="0 0 0.116" rpy="0 0 3.1415926535897932384626433832795" />
+    <parent link="link0" />
+    <child link="link1" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="182" start_stop="102" velocity="3.490659" />
+    <property inertia="0" damping="0" stiffness="0" offset="0" motor_constant="0" ratio="100" />
+  </joint>
+
+  <link name="link2">
+    <inertial>
+      <origin xyz="0.19256 0.000013 -0.007926" rpy="0 0 0" />
+      <mass value="5.115244" />
+      <inertia ixx="0.007595" ixy="0" ixz="0.002169" iyy="0.212844" iyz="0.000003" izz="0.210601" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link2.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint2" type="revolute">
+    <origin xyz="0 0.1205 0" rpy="-1.5707963267948966192313216916398 -1.5707963267948966192313216916398 0" />
+    <parent link="link1" />
+    <child link="link2" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="182" start_stop="102" velocity="3.490659" />
+    <property inertia="0" damping="0" stiffness="0" offset="0" motor_constant="0" ratio="100" />
+  </joint>
+
+  <link name="link3">
+    <inertial>
+      <origin xyz="0.305532 -0.000019 0.093271" rpy="0 0 0" />
+      <mass value="1.743227" />
+      <inertia ixx="0.001975" ixy="-0.000003" ixz="-0.000233" iyy="0.034961" iyz="-0.000001" izz="0.034349" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link3.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint3" type="revolute">
+    <origin xyz="0.432 0 0" rpy="-3.1415926535897932384626433832795 0 0" />
+    <parent link="link2" />
+    <child link="link3" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.705260" upper="2.705260" effort="134" start_stop="66" velocity="3.490659" />
+    <property inertia="0" damping="0" stiffness="0" offset="0" motor_constant="0" ratio="100" />
+  </joint>
+
+  <link name="link4">
+    <inertial>
+      <origin xyz="0.00003 0.011825 -0.00229" rpy="0 0 0" />
+      <mass value="1.102772" />
+      <inertia ixx="0.001277" ixy="0" ixz="0" iyy="0.000686" iyz="0.000034" izz="0.001253" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link4.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint4" type="revolute">
+    <origin xyz="0.3955 0 0" rpy="3.1415926535897932384626433832795 0 1.5707963267948966192313216916398" />
+    <parent link="link3" />
+    <child link="link4" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="66" start_stop="34" velocity="3.490659" />
+    <property inertia="0" damping="0" stiffness="0" offset="0" motor_constant="0" ratio="100" />
+  </joint>
+
+  <link name="link5">
+    <inertial>
+      <origin xyz="-0.00003 -0.011825 -0.00229" rpy="0 0 0" />
+      <mass value="1.102772" />
+      <inertia ixx="0.001277" ixy="0" ixz="0" iyy="0.000686" iyz="-0.000034" izz="0.001253" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link5.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link5.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint5" type="revolute">
+    <origin xyz="0 0.1025 0" rpy="-1.5707963267948966192313216916398 0 0" />
+    <parent link="link4" />
+    <child link="link5" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="66" start_stop="34" velocity="3.490659" />
+    <property inertia="0" damping="0" stiffness="0" offset="0" motor_constant="0" ratio="100" />
+  </joint>
+
+  <link name="link6">
+    <inertial>
+      <origin xyz="-0.000441 0.000546 -0.017108" rpy="0 0 0" />
+      <mass value="0.236686" />
+      <inertia ixx="0.000127" ixy="-0.000002" ixz="0" iyy="0.000127" iyz="-0.000001" izz="0.000205" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link6.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://aubo_description/meshes/aubo_iS3_WA/collision/link6.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint6" type="revolute">
+    <origin xyz="0 -0.094 0" rpy="1.5707963267948966192313216916398 0 0" />
+    <parent link="link5" />
+    <child link="link6" />
+    <axis xyz="0 0 1" />
+    <limit lower="-6.283185" upper="6.283185" effort="66" start_stop="34" velocity="3.490659" />
+    <property inertia="0" damping="0" stiffness="0" offset="0" motor_constant="0" ratio="100" />
+  </joint>
+
+  <link name="world" />
+  <joint name="joint0" type="fixed">
+    <parent link="world" />
+    <child link="link0" />
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+</robot>

@@ -1,0 +1,25 @@
+services:
+  qda-dev:
+    image: qda-ros:humble
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: qda-dev
+    stdin_open: true
+    tty: true
+    shm_size: "2gb"
+    gpus: all
+    security_opt:
+      - seccomp:unconfined
+    working_dir: /ws
+    environment:
+      ROS_DOMAIN_ID: "7"
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      CYCLONEDDS_URI: file:///ws/docker/cyclonedds.xml
+      QT_X11_NO_MITSHM: "1"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+    volumes:
+      - .:/ws
+    command: sleep infinity

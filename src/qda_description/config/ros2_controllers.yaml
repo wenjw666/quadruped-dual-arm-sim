@@ -1,0 +1,111 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 200
+    use_sim_time: true
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    leg_controller:
+      type: forward_command_controller/ForwardCommandController
+
+    left_arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    right_arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    left_gripper_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    right_gripper_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+leg_controller:
+  ros__parameters:
+    joints:
+      - FL_hip_joint
+      - FL_thigh_joint
+      - FL_calf_joint
+      - FR_hip_joint
+      - FR_thigh_joint
+      - FR_calf_joint
+      - RL_hip_joint
+      - RL_thigh_joint
+      - RL_calf_joint
+      - RR_hip_joint
+      - RR_thigh_joint
+      - RR_calf_joint
+    interface_name: position
+
+left_arm_controller:
+  ros__parameters:
+    joints:
+      - left_joint_link1
+      - left_joint_link2
+      - left_joint_link3
+      - left_joint_link4
+      - left_joint_link5
+      - left_joint_link6
+      - left_joint_link7
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 50.0
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.5
+      goal_time: 0.0
+
+right_arm_controller:
+  ros__parameters:
+    joints:
+      - right_joint_link1
+      - right_joint_link2
+      - right_joint_link3
+      - right_joint_link4
+      - right_joint_link5
+      - right_joint_link6
+      - right_joint_link7
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 50.0
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.5
+      goal_time: 0.0
+
+left_gripper_controller:
+  ros__parameters:
+    joints:
+      - left_finger_left_joint
+      - left_finger_right_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 50.0
+    allow_partial_joints_goal: false
+
+right_gripper_controller:
+  ros__parameters:
+    joints:
+      - right_finger_left_joint
+      - right_finger_right_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 50.0
+    action_monitor_rate: 50.0
+    allow_partial_joints_goal: false

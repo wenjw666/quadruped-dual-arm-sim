@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>qda_task</name>
+  <version>0.1.0</version>
+  <description>Pick, walk and place task executive.</description>
+  <maintainer email="dev@example.com">qda</maintainer>
+  <license>Apache-2.0</license>
+  <depend>rclpy</depend>
+  <depend>moveit_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>trajectory_msgs</depend>
+  <depend>shape_msgs</depend>
+  <depend>gazebo_msgs</depend>
+  <depend>qda_interfaces</depend>
+  <depend>qda_kinematics</depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

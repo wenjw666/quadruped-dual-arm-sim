@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.8)
+project(go1_description)
+find_package(ament_cmake REQUIRED)
+install(DIRECTORY meshes xacro urdf config launch DESTINATION share/${PROJECT_NAME})
+ament_package()

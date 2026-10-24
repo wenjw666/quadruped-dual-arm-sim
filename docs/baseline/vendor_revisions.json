@@ -1,0 +1,55 @@
+﻿[
+    {
+        "path":  "src/FAST-LIVO2",
+        "upstream":  "https://github.com/integralrobotics/FAST-LIVO2.git",
+        "commit":  "d4ad05174e258d5604f26cbd346ae97ba1b8c4b8",
+        "local_changes":  [
+                              " M CMakeLists.txt",
+                              " M include/voxel_map.h",
+                              " M package.xml",
+                              " M src/LIVMapper.cpp",
+                              " M src/voxel_map.cpp",
+                              "?? config/camera_gazebo.yaml",
+                              "?? config/gazebo.yaml"
+                          ]
+    },
+    {
+        "path":  "src/perception_pcl",
+        "upstream":  "https://github.com/ros-perception/perception_pcl.git",
+        "commit":  "0bd370d9b2fb9ab2cfa7af4093253aeaaca1a58b",
+        "local_changes":  [
+                              " M pcl_ros/cfg/CropBox.cfg",
+                              " M pcl_ros/cfg/EuclideanClusterExtraction.cfg",
+                              " M pcl_ros/cfg/ExtractIndices.cfg",
+                              " M pcl_ros/cfg/ExtractPolygonalPrismData.cfg",
+                              " M pcl_ros/cfg/Feature.cfg",
+                              " M pcl_ros/cfg/Filter.cfg",
+                              " M pcl_ros/cfg/MLS.cfg",
+                              " M pcl_ros/cfg/RadiusOutlierRemoval.cfg",
+                              " M pcl_ros/cfg/SACSegmentation.cfg",
+                              " M pcl_ros/cfg/SACSegmentationFromNormals.cfg",
+                              " M pcl_ros/cfg/SegmentDifferences.cfg",
+                              " M pcl_ros/cfg/StatisticalOutlierRemoval.cfg",
+                              " M pcl_ros/cfg/VoxelGrid.cfg"
+                          ]
+    },
+    {
+        "path":  "src/ros2_livox_simulation",
+        "upstream":  "https://github.com/LihanChen2004/livox_laser_simulation_ros2.git",
+        "commit":  "cee09dc9eea6e0a9822735bbc98c925441bbb019",
+        "local_changes":  [
+                              " M CMakeLists.txt",
+                              " M include/ros2_livox/livox_points_plugin.h",
+                              " M src/livox_ode_multiray_shape.cpp",
+                              " M src/livox_points_plugin.cpp"
+                          ]
+    },
+    {
+        "path":  "src/rpg_vikit_src",
+        "upstream":  "https://github.com/Rhymer-Lcy/rpg_vikit_ros2_fisheye.git",
+        "commit":  "0b5548d9adab58128f3a59a507e96a83acfa8fdf",
+        "local_changes":  [
+
+                          ]
+    }
+]

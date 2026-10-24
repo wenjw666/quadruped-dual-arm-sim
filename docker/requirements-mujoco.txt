@@ -1,0 +1,5 @@
+mujoco==3.3.7
+trimesh==5.2.0
+pycollada==0.9.3
+glfw==2.11.0
+PyOpenGL==3.1.10

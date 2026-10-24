@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>qda_mujoco</name><version>0.1.0</version>
+  <description>MuJoCo backend using the shared QDA robot, scene and ROS interfaces.</description>
+  <maintainer email="dev@example.com">qda</maintainer><license>Apache-2.0</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend><exec_depend>qda_bringup</exec_depend>
+  <exec_depend>qda_kinematics</exec_depend><exec_depend>qda_interfaces</exec_depend>
+  <exec_depend>gazebo_msgs</exec_depend><exec_depend>control_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend><exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>nav_msgs</exec_depend><exec_depend>rosgraph_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend><exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend><exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>ament_index_python</exec_depend><exec_depend>ros2_livox_simulation</exec_depend>
+  <exec_depend>livox_ros_driver2</exec_depend><exec_depend>cv_bridge</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>
