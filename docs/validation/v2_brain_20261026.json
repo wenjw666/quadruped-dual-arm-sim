@@ -1,0 +1,132 @@
+{
+  "date_local": "2026-10-26",
+  "backend": "MuJoCo RL + bounded upper-limb PD",
+  "left_ibvs": {
+    "task_id": "accept-1792946037-align",
+    "skill": "visual_align",
+    "initial_error_px": 21.901697158813477,
+    "final_error_px": 1.4188790321350098,
+    "success": true,
+    "error_code": ""
+  },
+  "right_ibvs": {
+    "task_id": "accept-1792946235-align",
+    "skill": "visual_align",
+    "initial_error_px": 23.33643913269043,
+    "final_error_px": 0.9270790815353394,
+    "success": true,
+    "error_code": ""
+  },
+  "shared_scene": {
+    "monitors": {
+      "move_group": {
+        "octomap_bytes": 391705,
+        "octomap_frame": "odom",
+        "resolution": 0.05,
+        "objects": []
+      },
+      "right": {
+        "octomap_bytes": 391705,
+        "octomap_frame": "odom",
+        "resolution": 0.05,
+        "objects": []
+      },
+      "left": {
+        "octomap_bytes": 391705,
+        "octomap_frame": "odom",
+        "resolution": 0.05,
+        "objects": []
+      }
+    },
+    "passed": true
+  },
+  "shared_scene_followup": {
+    "status": 4,
+    "error": "",
+    "success": true,
+    "initial_error_px": 5.467068672180176,
+    "final_error_px": 1.4931204319000244,
+    "desired_depth_m": 0.32
+  },
+  "servo_gate": {
+    "trajectory_rejected_during_servo": true,
+    "stale_rejected": true,
+    "zero_stamp_accepted": true,
+    "out_of_range_rejected": true,
+    "unowned_rejected": true,
+    "passed": true
+  },
+  "task_cancel_replay_and_capability_gate": true,
+  "mcp": true,
+  "voice_task_completed": true,
+  "model": {
+    "model": "SmolVLM-500M-Instruct Q8_0 + matching Q8 projector",
+    "correct": 10,
+    "total": 12,
+    "median_text_latency_s": 0.8622967270002846,
+    "failures": [
+      {
+        "text": "前往北侧",
+        "error": "MISSING_NAV_TARGET"
+      },
+      {
+        "text": "Please go to the southern entry",
+        "error": "MISSING_ARM"
+      }
+    ],
+    "autonomous_execution_ready": false
+  },
+  "offline_voice": {
+    "correct": 3,
+    "total": 4,
+    "source": "synthetic Windows SAPI files, not microphone or user speech",
+    "failures": [
+      {
+        "case": "home",
+        "transcript": "作弊回味",
+        "rejection": "UNSUPPORTED_LOCAL_PHRASE"
+      }
+    ]
+  },
+  "limits": [
+    "No Xiaozhi cloud/device activation",
+    "No microphone measurement",
+    "No RDK X5 performance measurement",
+    "Calibration-board IBVS, no markerless grasp",
+    "Physical pick-place gated",
+    "Navigation uses simulation truth",
+    "No complete MTC/BT or action hot recovery"
+  ],
+  "model_assets": {
+    "llama-b11878-bin-ubuntu-x64.tar.gz": {
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11878/llama-b11878-bin-ubuntu-x64.tar.gz",
+      "sha256": "edadc40f684c3e44c7d1261eb72c993b98e66c3104555cbc43a0b261d773437f",
+      "upstream_sha256": true,
+      "bytes": 22491350
+    },
+    "xiaozhi-in-rdk.tar.gz": {
+      "url": "https://codeload.github.com/D-Robotics/xiaozhi-in-rdk/tar.gz/ade6cd1cc25ee105dc7d0fee600c56b8dd8b4305",
+      "sha256": "4ad29820b9a21af25a9d8fa4347762ecb04940a7e0ab9d7f5d8bdcb21dc79d2a",
+      "upstream_sha256": false,
+      "bytes": 25739
+    },
+    "vosk-model-small-cn-0.22.zip": {
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip",
+      "sha256": "3af8b0e7e0f835ae9d414ce5df580237a3cfb08d586c9fbbb0f7ff29ad5b14ba",
+      "upstream_sha256": false,
+      "bytes": 43898754
+    },
+    "SmolVLM-500M-Instruct-Q8_0.gguf": {
+      "url": "https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/72e986006ef53e37cdd3f6d4241c90b0f01df376/SmolVLM-500M-Instruct-Q8_0.gguf?download=true",
+      "sha256": "9d4612de6a42214499e301494a3ecc2be0abdd9de44e663bda63f1152fad1bf4",
+      "upstream_sha256": true,
+      "bytes": 436806912
+    },
+    "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf": {
+      "url": "https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/72e986006ef53e37cdd3f6d4241c90b0f01df376/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf?download=true",
+      "sha256": "d1eb8b6b23979205fdf63703ed10f788131a3f812c7b1f72e0119d5d81295150",
+      "upstream_sha256": true,
+      "bytes": 108783360
+    }
+  }
+}

@@ -137,9 +137,16 @@ class DynamicPlant:
         self.effort = self.model.actuator_ctrlrange[:, 1].copy()
         self.ranges = self.model.jnt_range[self.model.actuator_trnid[:, 0]]
         self.target = self.home.copy()
+        # Optional actuator feedforward; disabled in the trained reference plant.
+        # Runtime Servo enables it only for the selected upper limb. Physics,
+        # masses, contact and effort limits remain unchanged.
+        self.bias_compensation_mask = np.zeros(self.model.nu,dtype=bool)
+        self.velocity_reference = np.zeros(self.model.nu)
         self.reset()
 
     def reset(self, height=.56):
+        self.bias_compensation_mask[:]=False
+        self.velocity_reference[:]=0.
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[self.root_q:self.root_q+7] = [0., 0., height, 1., 0., 0., 0.]
         self.data.qpos[self.qadr] = self.home
@@ -152,7 +159,8 @@ class DynamicPlant:
             if target.shape != self.home.shape or not np.all(np.isfinite(target)):
                 raise ValueError('Invalid joint reference')
             self.target = np.clip(target, self.ranges[:, 0], self.ranges[:, 1])
-        torque = self.kp*(self.target-self.data.qpos[self.qadr])-self.kd*self.data.qvel[self.dadr]
+        torque = self.kp*(self.target-self.data.qpos[self.qadr])+self.kd*(self.velocity_reference-self.data.qvel[self.dadr])
+        torque += self.bias_compensation_mask*self.data.qfrc_bias[self.dadr]
         self.data.ctrl[:] = np.clip(torque, -self.effort, self.effort) if enabled else 0.
         mujoco.mj_step(self.model, self.data)
 

@@ -3,6 +3,8 @@
     [ValidateSet('auto','north','south','side','legacy')][string]$Scenario = 'auto',
     [ValidateSet('auto','rl','kinematic')][string]$MotionMode = 'auto',
     [switch]$VirtualGraspComparison,
+    [switch]$Brain,
+    [switch]$ServoFixture,
     [switch]$Rviz,
     [switch]$NoRviz,
     [switch]$Manual,
@@ -25,7 +27,9 @@ $taskValue = if ($Manual -or ($MotionMode -eq 'rl' -and -not $VirtualGraspCompar
 $virtualValue = if ($VirtualGraspComparison) { 'true' } else { 'false' }
 $outputDir = if ($MotionMode -eq 'rl') { '/ws/output/v2_scene' } elseif ($Backend -eq 'mujoco') { '/ws/output/mujoco' } else { '/ws/output' }
 if ($MotionMode -eq 'rl') { Write-Host 'Experimental RL factory scene: Nav2 + physical arms. Navigation uses simulation truth. Pick/place requires explicit -VirtualGraspComparison until physical grasp validation.' }
-$launchCommand = "source /opt/ros/humble/setup.bash; source /ws/install/setup.bash; cd /ws; exec ros2 launch qda_bringup pick_place.launch.py backend:=$Backend motion_mode:=$MotionMode allow_virtual_grasp:=$virtualValue scenario:=$Scenario gui:=$guiValue rviz:=$rvizValue run_task:=$taskValue output_dir:=$outputDir"
+$brainValue = if ($Brain) { 'true' } else { 'false' }
+$fixtureValue = if ($ServoFixture) { 'true' } else { 'false' }
+$launchCommand = "source /opt/ros/humble/setup.bash; source /ws/install/setup.bash; cd /ws; exec ros2 launch qda_bringup pick_place.launch.py backend:=$Backend motion_mode:=$MotionMode brain:=$brainValue servo_fixture:=$fixtureValue allow_virtual_grasp:=$virtualValue scenario:=$Scenario gui:=$guiValue rviz:=$rvizValue run_task:=$taskValue output_dir:=$outputDir"
 if ($Background) {
     $logPath = if ($Backend -eq 'mujoco') { '/ws/output/mujoco_session.log' } else { '/ws/output/gazebo_session.log' }
     docker exec -d -e PYTHONPATH=/opt/qda-rl-v2 -e ROS_DOMAIN_ID=$domainId -e DISPLAY=host.docker.internal:0.0 qda-dev bash -lc "$launchCommand > $logPath 2>&1"

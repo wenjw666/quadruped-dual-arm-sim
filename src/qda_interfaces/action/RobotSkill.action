@@ -1,0 +1,14 @@
+string task_id
+string skill
+string object_id
+string target_id
+string arm
+uint64 scene_version
+---
+bool success
+string error_code
+string report_json
+---
+string stage
+float32 progress
+string detail

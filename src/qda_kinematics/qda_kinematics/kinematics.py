@@ -41,6 +41,10 @@ ARM_HOME = (0.0, -math.pi / 2.0, 0.0, 0.0)
 # Photograph-inspired horizontal shoulders; calibrated relaxed display/home poses.
 AUBO_HOME_LEFT = (-0.566113381, -0.809603385, -2.419106216, 2.156220402, 0.499311776, 1.017, 1.54)
 AUBO_HOME_RIGHT = (0.566111467, -0.809600831, 2.419110778, 2.156225224, -0.49931376, 1.017, -1.54)
+# Servo-ready wrists: measured FCL link5/link7 clearance exceeds 13 mm,
+# whereas the photographed folded display pose only has a few millimetres.
+AUBO_SERVO_LEFT = (*AUBO_HOME_LEFT[:5], .70, 0.)
+AUBO_SERVO_RIGHT = (*AUBO_HOME_RIGHT[:5], .70, 0.)
 # Calibrated carry pad target (0.29, 0.32, 0.28) in base_link.
 AUBO_CARRY_LEFT = (-2.02240215, -2.227231155, -1.592419902, 2.287937532, -0.75840814, 1.007216445, 1.532523706)
 AUBO_LIMITS = (

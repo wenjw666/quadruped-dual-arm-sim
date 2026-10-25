@@ -250,6 +250,9 @@ def _launch(context, *args, **kwargs):
             build_dynamic_model(mjcf_path,urdf_path,
                 os.path.join(get_package_share_directory('qda_moveit_config'),'config','qda_robot.srdf'),target)
             mjcf_path=str(target)
+            if _enabled(LaunchConfiguration('servo_fixture').perform(context)):
+                from qda_mujoco.servo_fixture import add_servo_fixture
+                add_servo_fixture(mjcf_path)
     srdf_path = os.path.join(get_package_share_directory("qda_moveit_config"), "config", "qda_robot.srdf")
     with open(srdf_path, encoding="utf-8") as handle:
         srdf_xml = handle.read()
@@ -493,6 +496,24 @@ def _launch(context, *args, **kwargs):
     else:
         actions.extend([rsp, static_tf,
             TimerAction(period=3.0, actions=_mapping_nodes(move_group, locomotion, perception, dump, mapper, sim_time, lidar, camera,enable_livo=not dynamic)+navigator+[visualization])])
+    if dynamic and _enabled(LaunchConfiguration('brain').perform(context)):
+        import yaml
+        servo_config=os.path.join(get_package_share_directory('moveit_servo'),'config','panda_simulated_config.yaml')
+        brain_nodes=[]
+        for side in ('left','right'):
+            with open(servo_config) as handle:params=yaml.safe_load(handle)
+            params.update(command_in_type='speed_units',publish_period=.02,incoming_command_timeout=.35,
+                is_primary_planning_scene_monitor=False,move_group_name=side+'_arm',planning_frame=side+'_arm_mount',
+                ee_frame_name=side+'_gripper',robot_link_command_frame=side+'_gripper',
+                command_out_topic=f'/{side}_arm_controller/servo_joint_trajectory',check_collisions=True,
+                collision_check_rate=10.,self_collision_proximity_threshold=.01,scene_collision_proximity_threshold=.02)
+            descriptions={k:moveit_params[k] for k in ('robot_description','robot_description_semantic','robot_description_kinematics','robot_description_planning')}
+            brain_nodes.append(Node(package='moveit_servo',executable='servo_node_main',name='servo_'+side,
+                parameters=[descriptions,{'moveit_servo':params,'octomap_resolution':.05,'octomap_frame':'odom'},sim_time],
+                remappings=[('/planning_scene','/monitored_planning_scene')],output='log'))
+        for executable in ('skill_server','brain_node','visual_servo'):
+            brain_nodes.append(Node(package='qda_brain',executable=executable,parameters=[sim_time],output='screen'))
+        actions.append(TimerAction(period=8.,actions=brain_nodes))
     if run_task:
         task = Node(
             package="qda_task",
@@ -517,6 +538,8 @@ def generate_launch_description():
             DeclareLaunchArgument("gui", default_value="false"),
             DeclareLaunchArgument('backend', default_value='mujoco'),
             DeclareLaunchArgument('motion_mode',default_value='kinematic',description='kinematic comparison or RL free-base dynamics'),
+            DeclareLaunchArgument('brain',default_value='false',description='Local skills, semantic gateway and guarded MoveIt Servo'),
+            DeclareLaunchArgument('servo_fixture',default_value='false',description='Optical calibration boards, not grasp targets'),
             DeclareLaunchArgument('allow_virtual_grasp',default_value='false',description='Explicit comparison-only virtual grasp in RL mode'),
             DeclareLaunchArgument('scenario', default_value='auto', description='auto, north, south, side, or legacy'),
             DeclareLaunchArgument('output_dir', default_value='', description='Optional isolated output directory'),

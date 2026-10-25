@@ -7,6 +7,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/Attach.srv"
   "srv/Detach.srv"
   "action/PickPlace.action"
+  "action/RobotSkill.action"
+  "action/VisualAlign.action"
+  "srv/BrainRequest.srv"
   DEPENDENCIES geometry_msgs
 )
 ament_export_dependencies(rosidl_default_runtime)

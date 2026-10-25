@@ -32,7 +32,8 @@ from std_msgs.msg import Header, Float64MultiArray, Bool, String
 from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 from control_msgs.action import FollowJointTrajectory
 from gazebo_msgs.srv import GetEntityState
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, SetBool
+from trajectory_msgs.msg import JointTrajectory
 from qda_interfaces.srv import Attach, Detach
 from livox_ros_driver2.msg import CustomMsg, CustomPoint
 from ament_index_python.packages import get_package_share_directory
@@ -86,11 +87,21 @@ class MujocoBackend(Node):
         self.object_adr = int(self.model.jnt_qposadr[self.model.joint('object_free').id])
         self.object_dof = int(self.model.jnt_dofadr[self.model.joint('object_free').id])
         self.plans = {}
+        self.servo_lease = {}
+        self.servo_received = {'left':0,'right':0}
+        self.servo_velocity = {}
+        self.servo_sim_stamp = {}
+        self.servo_rejections = {'left':{},'right':{}}
+        self.arm_modes_pub=self.create_publisher(String,'/motion/arm_modes',10)
         self.previous_joints = dict(self.targets)
         self.joint_velocity = dict.fromkeys(self.targets, 0.)
         self.held = None
         self.servers = []
         for prefix in ['left','right']:
+            self.create_service(SetBool,f'/{prefix}_arm_controller/servo_mode',
+                lambda q,r,s=prefix:self.servo_mode(s,q,r),callback_group=self.group)
+            self.create_subscription(JointTrajectory,f'/{prefix}_arm_controller/servo_joint_trajectory',
+                lambda msg,s=prefix:self.servo_target(s,msg),1,callback_group=self.group)
             for kind in ['arm','gripper']:
                 name=f'{prefix}_{kind}_controller'
                 names=[f'{prefix}_joint_link{i}' for i in range(1,8)] if kind=='arm' else [f'{prefix}_finger_{s}_joint' for s in ['left','right']]
@@ -169,6 +180,9 @@ class MujocoBackend(Node):
         return response
 
     def validate_goal(self,goal,names):
+        with self.lock:
+            self.expire_servo()
+            if any(n.startswith(side+'_joint_link') for side in self.servo_lease for n in names):return GoalResponse.REJECT
         if self.controller and (not self.controller.ready or self.controller.fault):return GoalResponse.REJECT
         jt=goal.trajectory
         if set(jt.joint_names)!=set(names) or not jt.points:return GoalResponse.REJECT
@@ -185,11 +199,75 @@ class MujocoBackend(Node):
             previous=t
         return GoalResponse.ACCEPT
 
+    def expire_servo(self):
+        for side,until in list(self.servo_lease.items()):
+            if time.monotonic()>until:
+                self.servo_lease.pop(side,None)
+                self.servo_velocity.pop(side,None)
+                for i in range(1,8):
+                    name=f'{side}_joint_link{i}';self.targets[name]=float(self.data.qpos[self.addresses[name]])
+                    if self.controller:self.controller.plant.velocity_reference[self.controller.plant.names.index(name)]=0.
+
+    def servo_mode(self,side,request,response):
+        with self.lock:
+            self.expire_servo()
+            if request.data:
+                if (not self.controller or not self.controller.ready or self.controller.fault
+                        or f'{side}_arm_controller' in self.plans or side in self.servo_lease):
+                    response.success=False;response.message='Controller unavailable or already owned';return response
+                self.servo_lease[side]=time.monotonic()+5.
+                # Incremental position commands otherwise erase the static PD
+                # position error needed to balance gravity, making the arm sag.
+                # Keep bounded motor feedforward active during subsequent holds.
+                plant=self.controller.plant
+                for i in range(1,8):
+                    joint=f'{side}_joint_link{i}'
+                    plant.bias_compensation_mask[plant.names.index(joint)]=True
+                    self.targets[joint]=float(self.data.qpos[self.addresses[joint]])
+            else:
+                self.servo_lease.pop(side,None)
+                self.servo_velocity.pop(side,None)
+                for i in range(1,8):
+                    name=f'{side}_joint_link{i}';self.targets[name]=float(self.data.qpos[self.addresses[name]])
+                    if self.controller:self.controller.plant.velocity_reference[self.controller.plant.names.index(name)]=0.
+            response.success=True;response.message='Servo owns arm' if request.data else 'Position held'
+            return response
+
+    def servo_target(self,side,msg):
+        def reject(reason):
+            counts=self.servo_rejections[side];counts[reason]=counts.get(reason,0)+1
+        with self.lock:
+            self.expire_servo()
+            if side not in self.servo_lease or f'{side}_arm_controller' in self.plans:return reject('unowned')
+            if not self.controller or self.controller.fault:return reject('fault')
+            names=[f'{side}_joint_link{i}' for i in range(1,8)]
+            if len(msg.joint_names)!=7 or set(msg.joint_names)!=set(names) or not msg.points:return reject('joints')
+            point=msg.points[0]
+            if len(point.positions)!=7 or not np.all(np.isfinite(point.positions)):return reject('nonfinite')
+            if len(point.velocities)!=7 or not np.all(np.isfinite(point.velocities)) or max(abs(v) for v in point.velocities)>1.5:return reject('velocity')
+            sent=msg.header.stamp.sec+msg.header.stamp.nanosec*1e-9
+            # Humble MoveIt Servo intentionally emits stamp=0 (execute now).
+            # For that convention the exclusive lease, depth-1 queue and receipt
+            # watchdog apply; timestamped trajectories also have an age gate.
+            age=self.data.time-sent
+            if sent and (age>.4 or age<-.1):return reject('stale')
+            for name,value in zip(msg.joint_names,point.positions):
+                lo,hi=self.model.jnt_range[self.joint_ids[name]]
+                if not lo<=value<=hi:return reject('joint_limit')
+                if abs(value-self.data.qpos[self.addresses[name]])>.08:return reject('joint_step')
+            # Servo runs on wall timers. Integrate its bounded velocity output
+            # using physics time, not the number of wall-clock messages.
+            self.servo_velocity[side]=dict(zip(msg.joint_names,point.velocities))
+            self.servo_sim_stamp[side]=self.data.time
+            self.servo_received[side]+=1
+            self.servo_lease[side]=time.monotonic()+5.
+
     def execute(self,handle,name,names):
         jt=handle.request.trajectory
         order=[jt.joint_names.index(n) for n in names]
         with self.lock:
-            if name in self.plans:
+            self.expire_servo()
+            if name in self.plans or (name.endswith('_arm_controller') and name.split('_')[0] in self.servo_lease):
                 handle.abort()
                 return FollowJointTrajectory.Result(error_code=-1,error_string='Controller already executing')
             times=[p.time_from_start.sec+p.time_from_start.nanosec*1e-9 for p in jt.points]
@@ -365,6 +443,10 @@ class MujocoBackend(Node):
             imu.linear_acceleration_covariance[0]=-1.
             self.imu_pub.publish(imu)
         if self.due('rl_status',.2):
+            self.arm_modes_pub.publish(String(data=json.dumps({'servo':list(self.servo_lease),
+                'trajectory':list(self.plans),'accepted_servo_messages':self.servo_received,
+                'rejected_servo_messages':self.servo_rejections,
+                'bias_compensated_joints':[n for n,on in zip(self.controller.plant.names,self.controller.plant.bias_compensation_mask) if on]})))
             status=self.controller.status();status['grasp']='virtual_fixed_attachment' if self.allow_virtual_grasp else 'disabled_pending_physical_verification'
             self.rl_pub.publish(String(data=json.dumps(status)))
             self.ready_pub.publish(Bool(data=self.controller.ready))
@@ -444,14 +526,16 @@ class MujocoBackend(Node):
                 wall=time.monotonic()
                 if self.paused:
                     time.sleep(.01);continue
-                with self.lock:
-                    if self.controller:
+                if self.controller:
+                    with self.lock:
                         self.step_dynamic()
                         self.publish_state(np.zeros(3));self.render_sensors()
                         if self.viewer and self.due('viewer',1/20):self.viewer.sync()
-                        delay=dt-(time.monotonic()-wall)
-                        if delay>0:time.sleep(delay)
-                        continue
+                    # Yield outside the data lock so action/service callbacks can
+                    # acquire control even while software rendering runs slowly.
+                    time.sleep(max(0.,dt-(time.monotonic()-wall)))
+                    continue
+                with self.lock:
                     target=self.cmd if self.data.time-self.last_cmd<=.5 else np.zeros(3)
                     previous=self.velocity.copy()
                     self.velocity+=np.clip(target-self.velocity,-np.array([.35,.25,.8])*dt,np.array([.35,.25,.8])*dt)
@@ -481,6 +565,16 @@ class MujocoBackend(Node):
             if self.aux_renderer:self.aux_renderer.close()
 
     def step_dynamic(self):
+        self.expire_servo()
+        for side in self.servo_lease:
+            fresh=self.data.time-self.servo_sim_stamp.get(side,-1)<.35
+            for i in range(1,8):
+                name=f'{side}_joint_link{i}';velocity=self.servo_velocity.get(side,{}).get(name,0.) if fresh else 0.
+                current=float(self.data.qpos[self.addresses[name]])
+                lo,hi=self.model.jnt_range[self.joint_ids[name]]
+                target=self.targets[name]+velocity*self.model.opt.timestep
+                self.targets[name]=float(np.clip(target,max(lo,current-.08),min(hi,current+.08)))
+                self.controller.plant.velocity_reference[self.controller.plant.names.index(name)]=velocity
         for plan in list(self.plans.values()):
             elapsed=self.data.time-plan['start'];t=np.clip(elapsed,plan['times'][0],plan['times'][-1])
             values=plan['spline'](t) if plan['spline'] is not None else plan['points'][-1]

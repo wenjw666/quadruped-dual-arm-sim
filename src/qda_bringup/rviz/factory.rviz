@@ -285,6 +285,15 @@ Visualization Manager:
     Enabled: true
     Displays:
     - Class: rviz_default_plugins/Image
+      Name: V2 IBVS detected corners
+      Enabled: true
+      Topic:
+        Value: /brain/servo_overlay
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+    - Class: rviz_default_plugins/Image
       Name: V2 C0 body camera
       Enabled: true
       Topic:

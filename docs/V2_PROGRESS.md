@@ -15,20 +15,22 @@
 9. 5 个新种子 × 7 种指令的 35 回合小幅双臂运动/随机载荷验证全部完成，无跌倒或非足端异常接触，最大机身倾角约 4.48°。这不替代全幅操作与完整抓放验收。
 
 10. RL/ONNX + 自由基座 PD 已接入原工厂节点、同一地图、Nav2、双臂控制器和 RViz。新增唯一 `/cmd_vel` 仲裁节点；Smac 2D 替换 V2 的 NavFn，MPPI 速度上限收紧。机身 C0 和双腕相机已输出真实渲染图像；MoveIt 点云 OctoMap 已接入。详细验收范围见工厂接入记录。
+11. 2026-10-26：本地 SmolVLM-500M Q8 + 投影器、Vosk 中文离线 ASR、SAPI 文件 TTS、MCP 工具桥和真实技能 ActionServer 已部署。双腕 ArUco/PnP IBVS 通过 MoveIt Servo 接入物理关节控制，两臂分别从 21.90/23.34 px 收敛到 1.42/0.93 px。任务幂等、取消、过期场景、控制互斥和能力门控已测试。语音四条短句通过三条；模型十二项通过十项，尚不能自主决策运动。见 [本地大脑部署](V2_BRAIN_DEPLOYMENT.md)。
 
 关键文档：[方案审核](V2_AUDIT.md)、[B2 开源核查与测试](B2_RL_REFERENCE_AUDIT.md)、[运控适配结果](V2_RL_ADAPTATION.md)、[工厂工程接入](V2_FACTORY_INTEGRATION.md)。
 
 ## 尚未接入或完成
 
 - V2 主入口已接入实验性 RL；V1 规定运动仍作为显式 `kinematic` 对照。两者不得共用验收标签。
-- 决策核心还没有连接完整抓放技能 ActionServer；实际底盘指令已有优先级/超时/保持仲裁，但尚未把纯逻辑的任务租约接入所有技能资源。
+- 已连接导航、回位、视觉对准、暂停和状态技能 ActionServer；完整物理抓放仍被能力门控，尚未完成全部技能资源租约与故障热恢复。
 - 未完成匹配版本的裸 B2 基线复现、有效的双臂运动策略再训练和复杂工厂路线验收；简单 Nav2 到点已接通，低速与运动耦合性能仍需提升。
-- C0/LIVO 真定位、四相机视觉闭环、MTC/Servo、物理抓取和 30 轮正式验收仍按审核文档分阶段推进。
+- 双腕标定板 IBVS/Servo 已完成离线闭环；C0/LIVO 真定位、无标记物体闭环、KLT、完整 MTC、物理抓取和 30 轮正式验收仍按审核文档分阶段推进。
 - 未测量 RDK X5 的实时性、内存或温度；桌面 Docker 的训练/仿真结果不能替代。
 
 ## 实验入口
 
 - `run_v2_training.ps1`：构建训练模型 → 审计 → 小规模 PPO 验证。
+- `start_brain.ps1 -WithSimulation`：本地模型与带大脑的 MuJoCo；`run_sim.ps1 -Brain -ServoFixture -Manual -Background` 启动独立视觉验收场景。
 - `run_sim.ps1 -Background`：原工厂场景中的实验性 RL + Nav2 + MoveIt + 四相机 + RViz；默认不自动抓放。`-MotionMode kinematic` 返回 V1 对照。
 - 容器 `python3 /ws/scripts/fetch_b2_reference.py`：取得固定 B2 权重与配置。
 - 容器 `python3 /ws/scripts/evaluate_b2_reference.py`：在当前整机动力学模型运行原版 B2 策略。

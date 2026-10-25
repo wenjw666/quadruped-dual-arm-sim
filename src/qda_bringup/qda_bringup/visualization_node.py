@@ -47,6 +47,9 @@ class AlgorithmView(Node):
         self.joints = {}
         self.metrics = {}
         self.rl_status={};self.command_owner='waiting'
+        self.brain_status={};self.servo_metrics={};self.servo_wall=0.
+        self.create_subscription(String,'/brain/status',self.on_brain,10)
+        self.create_subscription(String,'/brain/servo_metrics',self.on_servo,10)
         self.create_subscription(String,'/locomotion/rl_status',self.on_rl_status,10)
         self.create_subscription(String,'/motion/command_owner',self.on_command_owner,10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -73,6 +76,14 @@ class AlgorithmView(Node):
 
     def on_metrics(self, msg):
         try:self.metrics=json.loads(msg.data)
+        except ValueError:pass
+
+    def on_brain(self,msg):
+        try:self.brain_status=json.loads(msg.data)
+        except ValueError:pass
+
+    def on_servo(self,msg):
+        try:self.servo_metrics=json.loads(msg.data);self.servo_wall=time.monotonic()
         except ValueError:pass
 
     def on_rl_status(self,msg):
@@ -240,6 +251,12 @@ class AlgorithmView(Node):
                     f'\nNavigation odometry: SIMULATION TRUTH\nGrasp: {r.get("grasp","unknown")}'
                     f'\nTask: {self.stage_label(self.stage)}\nPerception: {self.labels[:65]}')
         status+=f'\nScenario: {SCENARIO} | distance {self.metrics.get("path_m",0):.2f} m\nPlan calls/failures: {self.metrics.get("planning_calls",0)}/{self.metrics.get("planning_failures",0)} | vision fallback {len(self.metrics.get("perception_fallbacks",[]))}'
+        if self.brain_status:
+            b=self.brain_status
+            status+=f'\nBrain skill: {b.get("last_skill")} | {b.get("last_status")} | error {b.get("last_error") or "none"}'
+        if self.servo_metrics:
+            s=self.servo_metrics;fresh='live' if time.monotonic()-self.servo_wall<5 else 'last observation'
+            status+=f'\nIBVS {s.get("arm")} | {s.get("error_px",0):.2f} px | {s.get("depth_m",0):.3f} m | {fresh}'
         color = (0.3, 1, 0.65, 1) if 'TASK_SUCCESS' in self.stage else ((1, 0.3, 0.25, 1) if 'FAILED' in self.stage else (0.9, 0.94, 1, 1))
         markers.append(self.marker(1, Marker.TEXT_VIEW_FACING, (1.3, 1.5, 1.9), (0, 0, 0.13), color, status))
         self.markers.publish(MarkerArray(markers=markers))

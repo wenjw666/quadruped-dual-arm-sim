@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "qda-local-robot": {
+      "type": "stdio",
+      "command": "bash",
+      "args": ["/ws/scripts/run_robot_mcp.sh"],
+      "env": {"QDA_ROS_DOMAIN_ID": "8"}
+    }
+  }
+}

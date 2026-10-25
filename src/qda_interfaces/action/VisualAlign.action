@@ -1,0 +1,12 @@
+string arm
+int32 marker_id
+float32 desired_depth
+float32 timeout_seconds
+---
+bool success
+string error_code
+float32 initial_error_px
+float32 final_error_px
+---
+float32 error_px
+string state
