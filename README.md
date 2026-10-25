@@ -1,6 +1,8 @@
-# 四足双臂机器人仿真 · V1 奠基版本
+# 四足双臂机器人仿真 · V2 开发分支
 
 ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-85 夹爪与顶部 RGB-D 相机。MuJoCo 为默认主后端，Gazebo 保留为对照后端，两者复用机器人、场景、感知、导航、操作与任务代码。
+
+当前分支的 `run_sim.ps1` 默认启动 **V2 实验性 RL 工厂场景**：自由基座 + ONNX/PD、Smac 2D/MPPI、物理双臂、四相机和 MoveIt OctoMap。默认不自动启动旧版虚拟抓取任务。定位仍使用仿真真值，完整方案尚未验收。详情见 [V2 工程接入记录](docs/V2_FACTORY_INTEGRATION.md)。
 
 ## 本版内容
 
@@ -20,6 +22,8 @@ ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-
 .\run_sim.ps1 -Scenario auto -Background
 .\stop_sim.ps1
 .\run_sim.ps1 -Scenario side -Background
+# V1 运动学取放基线
+.\run_sim.ps1 -MotionMode kinematic -Scenario auto -Background
 # Gazebo 对照
 .\run_sim.ps1 -Backend gazebo -Scenario auto -Background
 ```
@@ -34,9 +38,9 @@ ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-
 - [前期优化记录](OPTIMIZATION_V1.md)
 - [第三方源码快照说明](docs/THIRD_PARTY_SNAPSHOT.md)
 
-本轮四类路线均取得完整任务通过记录，但属于分阶段功能验证，不能作为同版本统计成功率。详细原始实验记录仍保存在本机 `output/`，未上传本仓库；可通过 `run_scenarios.ps1` 重新生成。
+V1 的四类路线均取得完整任务通过记录，但属于分阶段功能验证，不能作为同版本统计成功率。详细原始实验记录仍保存在本机 `output/`，未上传本仓库；可通过 `run_scenarios.ps1` 重新生成。
 
-当前采用规定机器人运动、虚拟抓取与真值里程计；感知失败时的配置坐标回退会显式记录。尚未验证真实四足稳定性、力矩控制、抓取力闭环或纯视觉导航闭环。正式研究方案在本轮用户验收后再接入。
+V1 基线采用规定机器人运动、虚拟抓取与真值里程计；感知失败时的配置坐标回退会显式记录。V2 已进入自由基座动力学和 RL 场景接入阶段，但物理抓取、纯视觉/激光定位、完整取放与板端性能仍待验收；不能沿用 V1 成功标签。
 
 ## 版本
 

@@ -14,5 +14,6 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    entry_points={'console_scripts': ['visualization_node = qda_bringup.visualization_node:main']},
+    entry_points={'console_scripts': ['visualization_node = qda_bringup.visualization_node:main',
+                                      'command_mux = qda_bringup.command_mux:main']},
 )

@@ -49,11 +49,15 @@ def build_dynamic_model(source, urdf, srdf, output, training=False):
         for body in list(world.findall('body')):
             if body is not robot:
                 world.remove(body)
-        # Known carried-mass surrogate for locomotion training, not a grasp test.
-        from qda_kinematics.assembly import GRIPPER_PAD
-        wrist=next(b for b in robot.iter('body') if b.get('name')=='left_link7')
-        load=ET.SubElement(wrist,'body',name='training_payload',pos=f'0 0 {GRIPPER_PAD}')
-        ET.SubElement(load,'inertial',mass='.001',pos='0 0 0',diaginertia='1e-6 1e-6 1e-6')
+    else:
+        from .cameras import add_cameras
+        add_cameras(robot)
+    # Keep the same nominal articulated plant in training and scene deployment.
+    # This surrogate is not a physical grasp and is reported separately.
+    from qda_kinematics.assembly import GRIPPER_PAD
+    wrist=next(b for b in robot.iter('body') if b.get('name')=='left_link7')
+    load=ET.SubElement(wrist,'body',name='training_payload',pos=f'0 0 {GRIPPER_PAD}')
+    ET.SubElement(load,'inertial',mass='.001',pos='0 0 0',diaginertia='1e-6 1e-6 1e-6')
     for body in robot.iter('body'):
         body.set('gravcomp', '0')
         for geom in body.findall('geom'):
@@ -105,6 +109,11 @@ def build_dynamic_model(source, urdf, srdf, output, training=False):
                   limits_source='URDF effort; not calibrated hardware torque-speed envelopes',
                   calibrated_hardware=False)
     output.with_suffix('.dynamic.json').write_text(json.dumps(report, indent=2))
+    source_manifest=source.with_suffix('.manifest.json')
+    if source_manifest.exists():
+        manifest=json.loads(source_manifest.read_text())
+        manifest.update(motion='free_base_pd',training_plane=training)
+        output.with_suffix('.manifest.json').write_text(json.dumps(manifest,indent=2))
     return report
 
 

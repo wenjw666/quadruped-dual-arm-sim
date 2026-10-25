@@ -1,0 +1,165 @@
+{
+  "date": "2026-10-25",
+  "scope": "Experimental original-factory RL integration; not full PPT pick/place acceptance",
+  "integration": {
+    "passed": true,
+    "localization": "simulation_truth",
+    "physical_grasp_validated": false,
+    "runtime_ready": false,
+    "aux_cameras": {
+      "c0": {
+        "frame": "c0_optical_frame",
+        "parent": "base_link",
+        "image_std": 58.5855343632835,
+        "width": 320,
+        "height": 240
+      },
+      "left_wrist": {
+        "frame": "left_wrist_optical_frame",
+        "parent": "left_link7",
+        "image_std": 63.896728385440305,
+        "width": 320,
+        "height": 240
+      },
+      "right_wrist": {
+        "frame": "right_wrist_optical_frame",
+        "parent": "right_link7",
+        "image_std": 63.82667582310054,
+        "width": 320,
+        "height": 240
+      }
+    },
+    "octomap": {
+      "frame": "odom",
+      "resolution": 0.05,
+      "data_bytes": 391705
+    },
+    "exclusive_command_publisher": true,
+    "arm_actions": [
+      {
+        "side": "left",
+        "status": 4,
+        "error_code": 0,
+        "detail": ""
+      },
+      {
+        "side": "left",
+        "status": 4,
+        "error_code": 0,
+        "detail": ""
+      },
+      {
+        "side": "right",
+        "status": 4,
+        "error_code": 0,
+        "detail": ""
+      },
+      {
+        "side": "right",
+        "status": 4,
+        "error_code": 0,
+        "detail": ""
+      }
+    ],
+    "navigation": {
+      "goal": [
+        -0.2,
+        1.0,
+        0.0
+      ],
+      "status": 4,
+      "position_error_m": 0.11735879338899048,
+      "path_points": 81
+    },
+    "moveit_base_error_m": 0.0012227982263329576,
+    "wall_seconds": 189.81033099499473,
+    "streams": {
+      "odom": 1510,
+      "status": 151,
+      "joints": 1510,
+      "scan": 302,
+      "camera": 209,
+      "c0_info": 151,
+      "c0": 151,
+      "left_wrist": 151,
+      "left_wrist_info": 151,
+      "right_wrist": 151,
+      "right_wrist_info": 151,
+      "owner": 143,
+      "map": 60,
+      "filtered_cloud": 50,
+      "plan": 81
+    },
+    "max_tilt_rad": 0.04668105782273205,
+    "min_height_m": 0.48775464298981536,
+    "faults": []
+  },
+  "policy_binding": {
+    "reference_model_sha256": "5940113c8001bdc7980c72d3b81f9a9821cc42406eb9ccf7e9da33add43e36d5",
+    "scene_model_sha256": "1fe74c727628038112044154ac790fc3b73940b34704c873342adde79628c697",
+    "robot_physics_signature": "62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98",
+    "runtime_ready": false,
+    "motion": "RL_ONNX_free_base_PD",
+    "localization": "simulation_truth",
+    "grasp": "virtual_attachment_disabled"
+  },
+  "moveit_planning_execution": {
+    "passed": true,
+    "base_settled": true,
+    "plans": [
+      {
+        "arm": "left",
+        "planning_error_code": 1,
+        "points": 9,
+        "action_status": 4,
+        "execution_error_code": 1
+      },
+      {
+        "arm": "left",
+        "planning_error_code": 1,
+        "points": 9,
+        "action_status": 4,
+        "execution_error_code": 1
+      },
+      {
+        "arm": "right",
+        "planning_error_code": 1,
+        "points": 9,
+        "action_status": 4,
+        "execution_error_code": 1
+      },
+      {
+        "arm": "right",
+        "planning_error_code": 1,
+        "points": 9,
+        "action_status": 4,
+        "execution_error_code": 1
+      }
+    ],
+    "wall_seconds": 21.769483994001348
+  },
+  "additional_checks": {
+    "scene_contract_tests": 2,
+    "decision_guard_tests": 10,
+    "ros_command_mux": "PASS priority/TTL/hold/release/fault"
+  },
+  "raw_sha256": {
+    "integration_final.json": "6d96069c6be8eae30efad0bd203b1bd168f2874e4903b2f98fac1e4e0b4e439b",
+    "moveit_integration.json": "83253ea1aac024732e0563a3f4debdca974d5cfaa2a7b54aa604fa8a5b4419f7"
+  },
+  "source_sha256": {
+    "src/qda_mujoco/qda_mujoco/node.py": "2fca96d693bab9f8fdc86fe9caa2632965ab85b663f799dd31553e9853465898",
+    "src/qda_mujoco/qda_mujoco/scene_control.py": "6355bcf00f49b989f71222717cfab52dd5b16cba3430df93369e41b155389bb9",
+    "src/qda_mujoco/qda_mujoco/dynamics.py": "f824bb68823c65e2bca4084869d026bf085b5770277db8ee18f1645e87dac14a",
+    "src/qda_mujoco/qda_mujoco/cameras.py": "c9cadaedcb692b91a69176fb79d33e03417b9482ca8ccff8a3ff77eaa7684f7e",
+    "src/qda_bringup/launch/pick_place.launch.py": "dd31bff9d42d6a3dc00817424cdcc238ca438797695ae860d7ba22133ea86a61",
+    "src/qda_bringup/qda_bringup/command_mux.py": "57c8e79ea1c9d9868608569889f3db07435b8aa3bb6f65f0712fcf21f244b70d"
+  },
+  "limitations": [
+    "truth odometry",
+    "virtual camera extrinsics",
+    "no physical grasp acceptance",
+    "no 30-trial full-task result",
+    "no X5 hardware measurements"
+  ]
+}

@@ -200,6 +200,20 @@ Visualization Manager:
     Enabled: true
     Displays:
     - Class: rviz_default_plugins/PointCloud2
+      Name: V2 MoveIt self-filtered obstacle cloud
+      Enabled: true
+      Topic:
+        Value: /v2/filtered_cloud
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+      Style: Points
+      Size (m): 0.03
+      Color Transformer: AxisColor
+      Position Transformer: XYZ
+      Axis: Z
+    - Class: rviz_default_plugins/PointCloud2
       Name: LIVO colored scan / odom aligned (2 s)
       Enabled: true
       Topic:
@@ -271,6 +285,33 @@ Visualization Manager:
     Enabled: true
     Displays:
     - Class: rviz_default_plugins/Image
+      Name: V2 C0 body camera
+      Enabled: true
+      Topic:
+        Value: /cameras/c0/image_raw
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+    - Class: rviz_default_plugins/Image
+      Name: V2 left wrist camera (enable to inspect)
+      Enabled: false
+      Topic:
+        Value: /cameras/left_wrist/image_raw
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+    - Class: rviz_default_plugins/Image
+      Name: V2 right wrist camera (enable to inspect)
+      Enabled: false
+      Topic:
+        Value: /cameras/right_wrist/image_raw
+        Depth: 2
+        History Policy: Keep Last
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+    - Class: rviz_default_plugins/Image
       Name: RGB-D detection
       Enabled: true
       Topic:
@@ -308,6 +349,8 @@ Visualization Manager:
   - Class: rviz_default_plugins/MoveCamera
   - Class: rviz_default_plugins/Interact
   - Class: rviz_default_plugins/FocusCamera
+  - Class: rviz_default_plugins/SetGoal
+    Topic: /goal_pose
   Views:
     Current:
       Class: rviz_default_plugins/Orbit

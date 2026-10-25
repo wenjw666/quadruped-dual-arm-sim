@@ -44,6 +44,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-humble-moveit-kinematics \
         ros-humble-moveit-simple-controller-manager \
         ros-humble-moveit-ros-planning \
+        ros-humble-moveit-ros-perception \
+        ros-humble-navigation2 \
+        ros-humble-nav2-smac-planner \
         ros-humble-rviz2 \
     && rm -rf /var/lib/apt/lists/*
 

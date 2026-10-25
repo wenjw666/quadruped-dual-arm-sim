@@ -1,6 +1,7 @@
-"""ROS 2 adapter for the shared kinematic comparison scene in MuJoCo.
+"""ROS 2 adapter for the shared factory scene in MuJoCo.
 
-Robot root/joint poses are prescribed, as in the current Gazebo backend.
+RL mode uses free-base dynamics and bounded motor torques. The explicit
+kinematic comparison mode prescribes root/joint poses, as in Gazebo V1.
 The released cube uses MuJoCo contact dynamics. RGB-D and rays are rendered /
 ray-cast from the actual MuJoCo scene, never replaced by target coordinates.
 """
@@ -23,11 +24,12 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.qos import qos_profile_sensor_data
 from builtin_interfaces.msg import Time
 from rosgraph_msgs.msg import Clock
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState, Imu, LaserScan, Image, CameraInfo
 from sensor_msgs_py.point_cloud2 import create_cloud_xyz32
-from std_msgs.msg import Header, Float64MultiArray
+from std_msgs.msg import Header, Float64MultiArray, Bool, String
+from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 from control_msgs.action import FollowJointTrajectory
 from gazebo_msgs.srv import GetEntityState
 from std_srvs.srv import Empty
@@ -48,8 +50,20 @@ class MujocoBackend(Node):
         super().__init__('qda_mujoco')
         model_path = self.declare_parameter('model_path', '/ws/output/mujoco/factory.xml').value
         self.gui = bool(self.declare_parameter('gui', False).value)
-        self.model = mujoco.MjModel.from_xml_path(model_path)
-        self.data = mujoco.MjData(self.model)
+        self.motion_mode=self.declare_parameter('motion_mode','kinematic').value
+        self.controller=None
+        self.allow_virtual_grasp=bool(self.declare_parameter('allow_virtual_grasp',False).value)
+        if self.motion_mode=='rl':
+            from .scene_control import SceneController
+            self.controller=SceneController(model_path,
+                self.declare_parameter('reference_model','/ws/output/v2/dynamics.xml').value,
+                self.declare_parameter('policy_path','/ws/output/v2/runs/b2_transfer_v1/initial_policy.onnx').value,
+                self.declare_parameter('command_response','/ws/output/v2_audit/b2_command_response.json').value)
+            self.model,self.data=self.controller.plant.model,self.controller.plant.data
+        elif self.motion_mode=='kinematic':
+            self.model = mujoco.MjModel.from_xml_path(model_path)
+            self.data = mujoco.MjData(self.model)
+        else:raise ValueError('motion_mode must be kinematic or rl')
         self.lock = threading.RLock()
         self.group = ReentrantCallbackGroup()
         self.running = True
@@ -94,6 +108,11 @@ class MujocoBackend(Node):
         self.clock_pub=self.create_publisher(Clock,'/clock',qos_profile_sensor_data)
         self.odom_pub=self.create_publisher(Odometry,'/odom',10)
         self.joint_pub=self.create_publisher(JointState,'/joint_states',10)
+        if self.controller:
+            self.tf_pub=TransformBroadcaster(self)
+            self.truth_pub=self.create_publisher(Odometry,'/simulation/odom_truth',10)
+            self.rl_pub=self.create_publisher(String,'/locomotion/rl_status',10)
+            self.ready_pub=self.create_publisher(Bool,'/locomotion/ready',10)
         self.imu_pub=self.create_publisher(Imu,'/imu',10)
         self.scan_pub=self.create_publisher(LaserScan,'/scan',qos_profile_sensor_data)
         self.cloud_pub=self.create_publisher(type(create_cloud_xyz32(Header(),[])),'/livox/lidar_PointCloud2',qos_profile_sensor_data)
@@ -102,6 +121,19 @@ class MujocoBackend(Node):
         self.depth_pub=self.create_publisher(Image,'/camera/depth/image_raw',qos_profile_sensor_data)
         self.info_pub=self.create_publisher(CameraInfo,'/camera/camera_info',qos_profile_sensor_data)
         self.overview_pub=self.create_publisher(Image,'/overview/image_raw',qos_profile_sensor_data)
+        self.aux_renderer=None;self.aux_publishers={}
+        if self.controller:
+            from .cameras import AUX_CAMERAS, optical_quaternion
+            self.camera_tf=StaticTransformBroadcaster(self);transforms=[]
+            for name,config in AUX_CAMERAS.items():
+                frame=name+'_optical_frame'
+                tf=TransformStamped(header=Header(frame_id=config['parent']),child_frame_id=frame)
+                tf.transform.translation.x,tf.transform.translation.y,tf.transform.translation.z=config['xyz']
+                tf.transform.rotation.x,tf.transform.rotation.y,tf.transform.rotation.z,tf.transform.rotation.w=map(float,optical_quaternion(config))
+                transforms.append(tf)
+                self.aux_publishers[name]=(self.create_publisher(Image,f'/cameras/{name}/image_raw',qos_profile_sensor_data),
+                    self.create_publisher(CameraInfo,f'/cameras/{name}/camera_info',qos_profile_sensor_data))
+            self.camera_tf.sendTransform(transforms)
         csv=Path(get_package_share_directory('ros2_livox_simulation'))/'scan_mode/mid360.csv'
         angles=np.loadtxt(csv,delimiter=',',skiprows=1,usecols=(1,2))*math.pi/180
         az,zen=angles[:,0],angles[:,1]-math.pi/2
@@ -116,17 +148,19 @@ class MujocoBackend(Node):
         self.render_option=mujoco.MjvOption()
         self.render_option.geomgroup[3]=1
         self.viewer=None
-        self.apply_robot()
+        if not self.controller:self.apply_robot()
         mujoco.mj_forward(self.model,self.data)
-        self.get_logger().info(f'MuJoCo {mujoco.__version__}: {len(self.targets)} joints, shared scene, prescribed robot + dynamic released object')
+        self.get_logger().info(f'MuJoCo {mujoco.__version__}: {len(self.targets)} joints, motion={self.motion_mode}, shared scene')
 
     def on_cmd(self,msg):
         with self.lock:
             values=np.array([msg.linear.x,msg.linear.y,msg.angular.z])
-            self.cmd=np.clip(values,[-.05,-.12,-.7],[.22,.12,.7]) if np.all(np.isfinite(values)) else np.zeros(3)
+            limits=([-.05,-.08,-.25],[.15,.08,.25]) if self.controller else ([-.05,-.12,-.7],[.22,.12,.7])
+            self.cmd=np.clip(values,*limits) if np.all(np.isfinite(values)) else np.zeros(3)
             self.last_cmd=self.data.time
 
     def on_legs(self,msg):
+        if self.controller:return # RL exclusively owns the leg actuators.
         if len(msg.data)==12 and np.all(np.isfinite(msg.data)):
             with self.lock:self.targets.update(zip(LEG_JOINTS,msg.data))
 
@@ -135,12 +169,17 @@ class MujocoBackend(Node):
         return response
 
     def validate_goal(self,goal,names):
+        if self.controller and (not self.controller.ready or self.controller.fault):return GoalResponse.REJECT
         jt=goal.trajectory
         if set(jt.joint_names)!=set(names) or not jt.points:return GoalResponse.REJECT
         previous=-1.
         for point in jt.points:
             t=point.time_from_start.sec+point.time_from_start.nanosec*1e-9
             if t<=previous or len(point.positions)!=len(names) or not np.all(np.isfinite(point.positions)):return GoalResponse.REJECT
+            if self.controller:
+                for name,value in zip(jt.joint_names,point.positions):
+                    lo,hi=self.model.jnt_range[self.joint_ids[name]]
+                    if not lo<=value<=hi:return GoalResponse.REJECT
             for field in (point.velocities,point.accelerations):
                 if field and (len(field)!=len(names) or not np.all(np.isfinite(field))):return GoalResponse.REJECT
             previous=t
@@ -168,11 +207,24 @@ class MujocoBackend(Node):
             plan=dict(start=self.data.time,times=np.array(times),points=points,names=names,done=False,spline=spline)
             self.plans[name]=plan
         while self.running and rclpy.ok():
+            if self.controller and self.controller.fault:
+                with self.lock:self.plans.pop(name,None)
+                handle.abort()
+                return FollowJointTrajectory.Result(error_code=-4,error_string=self.controller.fault)
             if handle.is_cancel_requested:
                 with self.lock:self.plans.pop(name,None)
                 handle.canceled()
                 return FollowJointTrajectory.Result(error_code=0,error_string='Cancelled; position held')
-            with self.lock:done=plan['done']
+            with self.lock:
+                done=plan['done']
+                error=max(abs(self.data.qpos[self.addresses[n]]-self.targets[n]) for n in names)
+                expired=self.data.time-plan['start']>plan['times'][-1]+3.
+            if self.controller and done and error>.06:
+                if expired:
+                    with self.lock:self.plans.pop(name,None)
+                    handle.abort()
+                    return FollowJointTrajectory.Result(error_code=-5,error_string=f'Physical tracking error {error:.3f} rad')
+                time.sleep(.01);continue
             if done:
                 with self.lock:self.plans.pop(name,None)
                 handle.succeed()
@@ -208,6 +260,9 @@ class MujocoBackend(Node):
         return response
 
     def attach(self,request,response):
+        if self.controller and not self.allow_virtual_grasp:
+            response.message='Virtual grasp disabled in RL mode; physical grasp verification pending'
+            return response
         if request.parent_model!='qda_robot' or request.child_model!='pick_object' or request.child_link!='object_link':
             response.message='Unsupported attachment';return response
         try:
@@ -259,6 +314,13 @@ class MujocoBackend(Node):
         return distances
 
     def publish_state(self,acceleration):
+        if self.controller:
+            self.publish_dynamic_state()
+        else:
+            self.publish_kinematic_state(acceleration)
+        self.publish_lidar()
+
+    def publish_kinematic_state(self,acceleration):
         if self.due('clock',.01):self.clock_pub.publish(Clock(clock=stamp(self.data.time)))
         if self.due('state',.02):
             odom=Odometry(header=self.header('odom'),child_frame_id='base_link')
@@ -276,6 +338,38 @@ class MujocoBackend(Node):
             imu.linear_acceleration.y=float(acceleration[1]+self.velocity[2]*self.velocity[0])
             imu.linear_acceleration.z=9.81
             self.imu_pub.publish(imu)
+
+    def publish_dynamic_state(self):
+        p=self.controller.plant;s=p.state()
+        if self.due('clock',.01):self.clock_pub.publish(Clock(clock=stamp(self.data.time)))
+        if self.due('state',.02):
+            odom=Odometry(header=self.header('odom'),child_frame_id='base_link')
+            xyz=self.data.xpos[p.base_id];q=self.data.xquat[p.base_id]
+            odom.pose.pose.position.x,odom.pose.pose.position.y,odom.pose.pose.position.z=map(float,xyz)
+            odom.pose.pose.orientation.w,odom.pose.pose.orientation.x,odom.pose.pose.orientation.y,odom.pose.pose.orientation.z=map(float,q)
+            odom.twist.twist.angular.x,odom.twist.twist.angular.y,odom.twist.twist.angular.z=map(float,s['velocity'][:3])
+            odom.twist.twist.linear.x,odom.twist.twist.linear.y,odom.twist.twist.linear.z=map(float,s['velocity'][3:])
+            self.odom_pub.publish(odom);self.truth_pub.publish(odom)
+            transform=TransformStamped(header=odom.header,child_frame_id='base_link')
+            transform.transform.translation.x,transform.transform.translation.y,transform.transform.translation.z=map(float,xyz)
+            transform.transform.rotation=odom.pose.pose.orientation;self.tf_pub.sendTransform(transform)
+            self.joint_pub.publish(JointState(header=self.header('base_link'),name=list(self.targets),
+                position=[float(self.data.qpos[self.addresses[n]]) for n in self.targets],
+                velocity=[float(self.data.qvel[self.dof_addresses[n]]) for n in self.targets]))
+        if self.due('imu',.005):
+            imu=Imu(header=self.header('imu_link'))
+            q=self.data.xquat[p.base_id]
+            imu.orientation.w,imu.orientation.x,imu.orientation.y,imu.orientation.z=map(float,q)
+            imu.angular_velocity.x,imu.angular_velocity.y,imu.angular_velocity.z=map(float,s['velocity'][:3])
+            # Full accelerometer simulation is a later sensor-stage requirement.
+            imu.linear_acceleration_covariance[0]=-1.
+            self.imu_pub.publish(imu)
+        if self.due('rl_status',.2):
+            status=self.controller.status();status['grasp']='virtual_fixed_attachment' if self.allow_virtual_grasp else 'disabled_pending_physical_verification'
+            self.rl_pub.publish(String(data=json.dumps(status)))
+            self.ready_pub.publish(Bool(data=self.controller.ready))
+
+    def publish_lidar(self):
         if self.due('scan',.1):
             dist=self.rays('nav_scan_link',self.scan_dirs,12)
             dist[(dist<.35)|(dist>12)]=np.inf
@@ -319,12 +413,24 @@ class MujocoBackend(Node):
             info.r=[1.,0.,0.,0.,1.,0.,0.,0.,1.]
             info.p=[focal,0.,320.,0.,0.,focal,240.,0.,0.,0.,1.,0.]
             self.info_pub.publish(info)
+        if self.aux_renderer and self.due('aux_cameras',.2):
+            for name,(rgb_pub,info_pub) in self.aux_publishers.items():
+                self.aux_renderer.update_scene(self.data,camera=name,scene_option=self.render_option)
+                frame=name+'_optical_frame'
+                rgb_pub.publish(self.image(self.aux_renderer.render(),'rgb8',frame))
+                focal=120/math.tan(math.radians(self.model.cam_fovy[self.model.camera(name).id])/2)
+                info=CameraInfo(header=self.header(frame),height=240,width=320,distortion_model='plumb_bob',d=[0.]*5)
+                info.k=[focal,0.,160.,0.,focal,120.,0.,0.,1.]
+                info.r=[1.,0.,0.,0.,1.,0.,0.,0.,1.]
+                info.p=[focal,0.,160.,0.,0.,focal,120.,0.,0.,0.,1.,0.]
+                info_pub.publish(info)
         if self.due('overview',.25):
             self.renderer.disable_depth_rendering();self.renderer.update_scene(self.data,camera='overview',scene_option=self.render_option)
             self.overview_pub.publish(self.image(self.renderer.render(),'rgb8','overview_cam'))
 
     def run(self):
         self.renderer=mujoco.Renderer(self.model,height=480,width=640)
+        if self.aux_publishers:self.aux_renderer=mujoco.Renderer(self.model,height=240,width=320)
         if self.gui:
             from mujoco import viewer
             self.viewer=viewer.launch_passive(self.model,self.data)
@@ -339,6 +445,13 @@ class MujocoBackend(Node):
                 if self.paused:
                     time.sleep(.01);continue
                 with self.lock:
+                    if self.controller:
+                        self.step_dynamic()
+                        self.publish_state(np.zeros(3));self.render_sensors()
+                        if self.viewer and self.due('viewer',1/20):self.viewer.sync()
+                        delay=dt-(time.monotonic()-wall)
+                        if delay>0:time.sleep(delay)
+                        continue
                     target=self.cmd if self.data.time-self.last_cmd<=.5 else np.zeros(3)
                     previous=self.velocity.copy()
                     self.velocity+=np.clip(target-self.velocity,-np.array([.35,.25,.8])*dt,np.array([.35,.25,.8])*dt)
@@ -365,6 +478,18 @@ class MujocoBackend(Node):
         finally:
             if self.viewer:self.viewer.close()
             if self.renderer:self.renderer.close()
+            if self.aux_renderer:self.aux_renderer.close()
+
+    def step_dynamic(self):
+        for plan in list(self.plans.values()):
+            elapsed=self.data.time-plan['start'];t=np.clip(elapsed,plan['times'][0],plan['times'][-1])
+            values=plan['spline'](t) if plan['spline'] is not None else plan['points'][-1]
+            for i,name in enumerate(plan['names']):self.targets[name]=float(values[i])
+            plan['done']=elapsed>=plan['times'][-1]
+        target=self.cmd if self.data.time-self.last_cmd<=.25 else np.zeros(3)
+        self.controller.step(target,self.targets)
+        mujoco.mj_forward(self.model,self.data)
+        if self.held is not None:self.update_held();mujoco.mj_forward(self.model,self.data)
 
 
 def main():

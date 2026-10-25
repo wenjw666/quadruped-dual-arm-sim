@@ -26,9 +26,10 @@ def _camera_fx(camera: str) -> float:
     return (640.0 / 2.0) / math.tan(hfov / 2.0)
 
 
-def _mapping_nodes(move_group, locomotion, perception, dump, mapper, sim_time, lidar, camera):
+def _mapping_nodes(move_group, locomotion, perception, dump, mapper, sim_time, lidar, camera, enable_livo=True):
     """Start FAST-LIVO2 once its package is installed. Mapping still runs without it."""
-    nodes = [move_group, locomotion, perception, dump, mapper]
+    nodes = [n for n in (move_group, locomotion, perception, dump, mapper) if n is not None]
+    if not enable_livo:return nodes
     try:
         share = get_package_share_directory("fast_livo")
     except PackageNotFoundError:
@@ -71,7 +72,7 @@ def _mapping_nodes(move_group, locomotion, perception, dump, mapper, sim_time, l
     return nodes
 
 
-def _nav2_nodes(sim_time, visualize=False):
+def _nav2_nodes(sim_time, visualize=False, dynamic=False):
     """Holonomic MPPI on the live /map. One cmd_vel publisher, so the old sampler stays off."""
     share = get_package_share_directory("qda_bringup")
     params = os.path.join(share, "config", "nav2_quad.yaml")
@@ -92,6 +93,11 @@ def _nav2_nodes(sim_time, visualize=False):
         if executable == 'controller_server':
             extra.append({'FollowPath.visualize': visualize, 'FollowPath.TrajectoryVisualizer.trajectory_step': 40,
                           'FollowPath.TrajectoryVisualizer.time_step': 4})
+            if dynamic:extra.append({'FollowPath.vx_max':.15,'FollowPath.vy_max':.08,'FollowPath.wz_max':.25,
+                                     'progress_checker.movement_time_allowance':60.,'failure_tolerance':5.})
+        if executable=='planner_server' and dynamic:
+            extra.append({'GridBased.plugin':'nav2_smac_planner/SmacPlanner2D','GridBased.tolerance':.15,
+                          'GridBased.allow_unknown':True,'GridBased.max_iterations':1000000})
         if executable == "bt_navigator":
             extra.append({"default_nav_to_pose_bt_xml": os.path.join(bt_dir, bt_name)})
         nodes.append(
@@ -101,6 +107,7 @@ def _nav2_nodes(sim_time, visualize=False):
                 name=name,
                 output="screen",
                 parameters=[params, sim_time, *extra],
+                remappings=[('/cmd_vel','/cmd_vel_nav')] if dynamic else [],
             )
         )
     return nodes
@@ -186,6 +193,10 @@ def _launch(context, *args, **kwargs):
     from qda_kinematics.scene import SPAWN_XYZ, scene_manifest
     from qda_bringup.world_sdf import world_xml
     backend = LaunchConfiguration('backend').perform(context).strip().lower()
+    motion_mode=LaunchConfiguration('motion_mode').perform(context).strip()
+    dynamic=motion_mode=='rl'
+    if motion_mode not in ('kinematic','rl') or (dynamic and backend!='mujoco'):
+        raise RuntimeError('RL motion mode requires the MuJoCo backend')
     if backend not in ('gazebo', 'mujoco'):
         raise RuntimeError('backend must be gazebo or mujoco')
     gui = _enabled(LaunchConfiguration("gui").perform(context))
@@ -206,7 +217,10 @@ def _launch(context, *args, **kwargs):
     if not os.path.isabs(out):raise RuntimeError('output_dir must be an absolute path')
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out,'scene_manifest.json'),'w',encoding='utf-8') as handle:
-        json.dump(scene_manifest(),handle,indent=2)
+        manifest=scene_manifest()
+        if dynamic:manifest.update(motion='RL_ONNX_free_base_PD',grasp='disabled unless explicitly enabled as virtual',
+                                   localization='simulation_truth',planner='SmacPlanner2D',runtime_ready=False)
+        json.dump(manifest,handle,indent=2)
     world_path = os.path.join(out, "pick_place.world")
     with open(world_path, "w", encoding="utf-8") as handle:
         handle.write(world_xml(fast))
@@ -229,11 +243,22 @@ def _launch(context, *args, **kwargs):
             raise RuntimeError('The MuJoCo comparison backend currently supports lidar:=mid360')
         from qda_mujoco.model import build_model
         mjcf_path = build_model(urdf_path, world_path, os.path.join(out, 'factory.xml'))
+        if dynamic:
+            from qda_mujoco.dynamics import build_dynamic_model
+            from pathlib import Path
+            target=Path(out)/'factory_dynamic.xml'
+            build_dynamic_model(mjcf_path,urdf_path,
+                os.path.join(get_package_share_directory('qda_moveit_config'),'config','qda_robot.srdf'),target)
+            mjcf_path=str(target)
     srdf_path = os.path.join(get_package_share_directory("qda_moveit_config"), "config", "qda_robot.srdf")
     with open(srdf_path, encoding="utf-8") as handle:
         srdf_xml = handle.read()
     from qda_bringup.refined_assembly import refine_srdf
     srdf_xml = refine_srdf(srdf_xml, robot_xml)
+    if dynamic:
+        semantic=ET.fromstring(srdf_xml)
+        ET.SubElement(semantic,'virtual_joint',name='world_joint',type='floating',parent_frame='odom',child_link='base_link')
+        srdf_xml=ET.tostring(semantic,encoding='unicode')
 
     plugin_lib = os.path.join(get_package_prefix("qda_gazebo_plugins"), "lib")
     livox_lib = ""
@@ -271,7 +296,9 @@ def _launch(context, *args, **kwargs):
         actions = [SetEnvironmentVariable('PYTHONUNBUFFERED', '1'),
                    SetEnvironmentVariable('MUJOCO_GL', 'egl'),
                    Node(package='qda_mujoco', executable='mujoco_node', output='screen',
-                        parameters=[{'model_path':mjcf_path, 'gui':gui}])]
+                        parameters=[{'model_path':mjcf_path, 'gui':gui,'motion_mode':motion_mode,
+                            'allow_virtual_grasp':_enabled(LaunchConfiguration('allow_virtual_grasp').perform(context))}])]
+        if dynamic:actions.append(Node(package='qda_bringup',executable='command_mux',parameters=[sim_time],output='screen'))
     if gui and backend == 'gazebo':
         actions.append(
             IncludeLaunchDescription(
@@ -388,6 +415,12 @@ def _launch(context, *args, **kwargs):
         "publish_robot_description_semantic": True,
         **sim_time,
     }
+    if dynamic:
+        moveit_params.update({'octomap_frame':'odom','octomap_resolution':.05,'sensors':['scene_lidar'],
+            'scene_lidar.sensor_plugin':'occupancy_map_monitor/PointCloudOctomapUpdater',
+            'scene_lidar.point_cloud_topic':'/livox/lidar_PointCloud2','scene_lidar.max_range':12.,
+            'scene_lidar.point_subsample':2,'scene_lidar.padding_offset':.02,'scene_lidar.padding_scale':1.,
+            'scene_lidar.max_update_rate':2.,'scene_lidar.filtered_cloud_topic':'/v2/filtered_cloud'})
     move_group = Node(
         package="moveit_ros_move_group",
         executable="move_group",
@@ -406,6 +439,7 @@ def _launch(context, *args, **kwargs):
         output="screen",
         parameters=[{"use_neural": use_neural, **sim_time}],
     )
+    if dynamic:locomotion=None
     perception = Node(
         package="qda_perception",
         executable="detector_node",
@@ -430,7 +464,7 @@ def _launch(context, *args, **kwargs):
             },
         ],
     )
-    navigator = _nav2_nodes(sim_time, visualize=rviz)
+    navigator = _nav2_nodes(sim_time, visualize=rviz,dynamic=dynamic)
     visualization = Node(package='qda_bringup', executable='visualization_node', output='screen',
                          parameters=[sim_time, {'backend':backend, 'output_dir':out,'task_enabled':run_task}])
     if backend == 'gazebo':
@@ -458,13 +492,14 @@ def _launch(context, *args, **kwargs):
     )
     else:
         actions.extend([rsp, static_tf,
-            TimerAction(period=3.0, actions=_mapping_nodes(move_group, locomotion, perception, dump, mapper, sim_time, lidar, camera)+navigator+[visualization])])
+            TimerAction(period=3.0, actions=_mapping_nodes(move_group, locomotion, perception, dump, mapper, sim_time, lidar, camera,enable_livo=not dynamic)+navigator+[visualization])])
     if run_task:
         task = Node(
             package="qda_task",
             executable="pick_place_node",
             output="screen",
             parameters=[sim_time, {'output_dir':out,'backend':backend}],
+            remappings=[('/cmd_vel','/cmd_vel_task')] if dynamic else [],
         )
         actions.append(TimerAction(period=14.0, actions=[task]))
         print("任务节点会在 14 秒后启动", flush=True)
@@ -481,6 +516,8 @@ def generate_launch_description():
         [
             DeclareLaunchArgument("gui", default_value="false"),
             DeclareLaunchArgument('backend', default_value='mujoco'),
+            DeclareLaunchArgument('motion_mode',default_value='kinematic',description='kinematic comparison or RL free-base dynamics'),
+            DeclareLaunchArgument('allow_virtual_grasp',default_value='false',description='Explicit comparison-only virtual grasp in RL mode'),
             DeclareLaunchArgument('scenario', default_value='auto', description='auto, north, south, side, or legacy'),
             DeclareLaunchArgument('output_dir', default_value='', description='Optional isolated output directory'),
             DeclareLaunchArgument("rviz", default_value="true", description="Algorithm dashboard; disable for headless benchmarks"),

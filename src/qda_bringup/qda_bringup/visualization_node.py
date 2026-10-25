@@ -46,6 +46,9 @@ class AlgorithmView(Node):
         self.plan = None
         self.joints = {}
         self.metrics = {}
+        self.rl_status={};self.command_owner='waiting'
+        self.create_subscription(String,'/locomotion/rl_status',self.on_rl_status,10)
+        self.create_subscription(String,'/motion/command_owner',self.on_command_owner,10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.markers = self.create_publisher(MarkerArray, '/viz/markers', latched)
         self.actual = self.create_publisher(Path, '/viz/actual_path', latched)
@@ -70,6 +73,14 @@ class AlgorithmView(Node):
 
     def on_metrics(self, msg):
         try:self.metrics=json.loads(msg.data)
+        except ValueError:pass
+
+    def on_rl_status(self,msg):
+        try:self.rl_status=json.loads(msg.data)
+        except ValueError:pass
+
+    def on_command_owner(self,msg):
+        try:self.command_owner=json.loads(msg.data).get('owner','unknown')
         except ValueError:pass
 
     def on_grid(self, msg, name):
@@ -212,6 +223,22 @@ class AlgorithmView(Node):
         if self.livo_last and time.monotonic()-self.livo_wall < 3:
             livo = 'receiving (not navigation odometry)'
         status = f'{self.backend.upper()} | kinematic comparison\nRTF {self.rtf:.2f} | cmd {self.cmd.linear.x:+.2f}, {self.cmd.linear.y:+.2f} m/s\nLIVO: {livo}\nTask: {self.stage_label(self.stage)}\nPerception: {self.labels[:70]}'
+        if self.rl_status:
+            r=self.rl_status
+            for i,(xyz,contact) in enumerate(zip(r.get('foot_positions_world',[]),r.get('foot_contacts',[]))):
+                markers.append(self.marker(400+i,Marker.SPHERE,xyz,(.09,.09,.09),(.2,.95,.35,.9) if contact else (1.,.3,.15,.7)))
+            for i,(key,color) in enumerate((('desired_velocity',(.2,.7,1.,1.)),('actual_body_velocity',(1.,.7,.15,1.)))):
+                velocity=r.get(key,[0.,0.,0.])
+                arrow=self.marker(410+i,Marker.ARROW,(0,0,0),(.025,.06,.07),color)
+                points=self.to_world([[0.,0.,.8+i*.1],[velocity[0]*3,velocity[1]*3,.8+i*.1]])
+                arrow.points=[Point(x=float(p[0]),y=float(p[1]),z=float(p[2])) for p in points]
+                markers.append(arrow)
+            status=(f'MUJOCO | RL + physical PD (experimental)\nRTF {self.rtf:.2f} | owner {self.command_owner}'
+                    f'\nTilt {math.degrees(r.get("tilt_rad",0)):.1f} deg | height {r.get("height",0):.3f} m'
+                    f'\nPolicy ticks {r.get("policy_ticks",0)} | fault {r.get("fault") or "none"}'
+                    '\nBlue: command | gold: simulated actual velocity | green feet: contact'
+                    f'\nNavigation odometry: SIMULATION TRUTH\nGrasp: {r.get("grasp","unknown")}'
+                    f'\nTask: {self.stage_label(self.stage)}\nPerception: {self.labels[:65]}')
         status+=f'\nScenario: {SCENARIO} | distance {self.metrics.get("path_m",0):.2f} m\nPlan calls/failures: {self.metrics.get("planning_calls",0)}/{self.metrics.get("planning_failures",0)} | vision fallback {len(self.metrics.get("perception_fallbacks",[]))}'
         color = (0.3, 1, 0.65, 1) if 'TASK_SUCCESS' in self.stage else ((1, 0.3, 0.25, 1) if 'FAILED' in self.stage else (0.9, 0.94, 1, 1))
         markers.append(self.marker(1, Marker.TEXT_VIEW_FACING, (1.3, 1.5, 1.9), (0, 0, 0.13), color, status))
