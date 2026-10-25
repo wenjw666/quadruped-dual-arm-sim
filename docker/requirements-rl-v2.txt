@@ -1,0 +1,14 @@
+# Install in an isolated target/venv; use existing CPU Torch for initial smoke tests.
+# GPU mjlab training remains a separate environment, not an in-place ROS upgrade.
+stable-baselines3==2.7.1
+gymnasium==1.2.2
+cloudpickle==3.1.1
+farama-notifications==0.0.4
+coacd==1.0.7
+onnx==1.19.1
+onnxruntime==1.23.2
+protobuf==6.33.0
+ml_dtypes==0.5.3
+flatbuffers==25.9.23
+coloredlogs==15.0.1
+humanfriendly==10.0

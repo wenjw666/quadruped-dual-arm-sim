@@ -1,0 +1,15 @@
+# V2 task contract. Goals are validated against a local object/target registry.
+string task_id
+string object_id
+string target_id
+string arm
+uint64 scene_version
+---
+bool success
+string error_code
+geometry_msgs/PoseStamped final_object_pose
+bool visually_confirmed
+---
+string stage
+float32 progress
+string last_error
