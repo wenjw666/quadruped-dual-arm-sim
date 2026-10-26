@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>qda_task</name>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <description>Pick, walk and place task executive.</description>
   <maintainer email="dev@example.com">qda</maintainer>
   <license>Apache-2.0</license>

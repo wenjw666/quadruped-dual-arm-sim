@@ -20,3 +20,10 @@ venv/
 *.bag
 *.db3
 *.mcap
+node_modules/
+media/product-demo/public/
+media/product-demo/out/
+media/product-demo/qc/stills/
+media/product-demo/qc/*.jpg
+media/product-demo/qc/*.png
+media/product-demo/qc/*.log

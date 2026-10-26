@@ -10,6 +10,15 @@ Visualization Manager:
     Fixed Frame: odom
     Frame Rate: 10
   Displays:
+  - Class: rviz_default_plugins/Image
+    Name: Live system status
+    Enabled: true
+    Topic:
+      Value: /viz/status_image
+      Depth: 1
+      History Policy: Keep Last
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
   - Class: rviz_default_plugins/Grid
     Name: Ground reference
     Enabled: true
@@ -286,7 +295,7 @@ Visualization Manager:
     Displays:
     - Class: rviz_default_plugins/Image
       Name: V2 IBVS detected corners
-      Enabled: true
+      Enabled: false
       Topic:
         Value: /brain/servo_overlay
         Depth: 2
@@ -295,7 +304,7 @@ Visualization Manager:
         Reliability Policy: Reliable
     - Class: rviz_default_plugins/Image
       Name: V2 C0 body camera
-      Enabled: true
+      Enabled: false
       Topic:
         Value: /cameras/c0/image_raw
         Depth: 2
@@ -331,7 +340,7 @@ Visualization Manager:
         Reliability Policy: Reliable
     - Class: rviz_default_plugins/Image
       Name: Factory overview
-      Enabled: true
+      Enabled: false
       Topic:
         Value: /overview/image_raw
         Depth: 2

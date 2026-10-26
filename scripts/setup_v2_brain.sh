@@ -11,4 +11,4 @@ set +u
 source /opt/ros/humble/setup.bash
 source /ws/install/setup.bash
 cd /ws
-colcon build --symlink-install --packages-select qda_interfaces qda_kinematics qda_brain qda_mujoco qda_bringup
+colcon build --base-paths src --symlink-install --packages-select qda_interfaces qda_kinematics qda_brain qda_mujoco qda_bringup

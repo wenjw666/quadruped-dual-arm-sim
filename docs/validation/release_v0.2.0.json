@@ -1,0 +1,518 @@
+{
+  "release": "v0.2.0",
+  "date": "2026-10-26",
+  "scope": "Engineering baseline in existing ROS Humble Docker; experimental RL, not hardware or full PPT acceptance",
+  "accepted_take": {
+    "mission_id": "coord-dual_visual-1793010424",
+    "passed": true,
+    "completed_steps": 4,
+    "steps": [
+      {
+        "index": 0,
+        "task_id": "mission.7641f401d969379dee9b2053.0",
+        "action_status": 4,
+        "result": {
+          "task_id": "mission.7641f401d969379dee9b2053.0",
+          "skill": "navigate",
+          "success": true,
+          "error_code": ""
+        }
+      },
+      {
+        "index": 1,
+        "task_id": "mission.7641f401d969379dee9b2053.1",
+        "action_status": 4,
+        "result": {
+          "task_id": "mission.7641f401d969379dee9b2053.1",
+          "skill": "visual_align",
+          "initial_error_px": 18.432086944580078,
+          "final_error_px": 1.4188790321350098,
+          "success": true,
+          "error_code": ""
+        }
+      },
+      {
+        "index": 2,
+        "task_id": "mission.7641f401d969379dee9b2053.2",
+        "action_status": 4,
+        "result": {
+          "task_id": "mission.7641f401d969379dee9b2053.2",
+          "skill": "visual_align",
+          "initial_error_px": 24.160390853881836,
+          "final_error_px": 1.0065871477127075,
+          "success": true,
+          "error_code": ""
+        }
+      },
+      {
+        "index": 3,
+        "task_id": "mission.7641f401d969379dee9b2053.3",
+        "action_status": 4,
+        "result": {
+          "task_id": "mission.7641f401d969379dee9b2053.3",
+          "skill": "inspect",
+          "locomotion": {
+            "reference_model_sha256": "5940113c8001bdc7980c72d3b81f9a9821cc42406eb9ccf7e9da33add43e36d5",
+            "scene_model_sha256": "25a4c1e4196d26515ae07e7cc58eb5668485faae6b7fbcd729907e3ada480dd2",
+            "robot_physics_signature": "62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98",
+            "runtime_ready": false,
+            "motion": "RL_ONNX_free_base_PD",
+            "localization": "simulation_truth",
+            "grasp": "disabled_pending_physical_verification",
+            "ready": true,
+            "fault": "",
+            "policy_ticks": 1761,
+            "physics_ticks": 17602,
+            "height": 0.49574698307072723,
+            "desired_velocity": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "actual_body_velocity": [
+              4.9873965386121434e-05,
+              -0.00018153487335518547,
+              0.00043138862814041603
+            ],
+            "foot_names": [
+              "FL",
+              "FR",
+              "RL",
+              "RR"
+            ],
+            "foot_contacts": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "foot_positions_world": [
+              [
+                0.35357885542274103,
+                0.31732393645489676,
+                0.024920490452208427
+              ],
+              [
+                0.3181696515414764,
+                -0.3017634883656542,
+                0.025116495386106164
+              ],
+              [
+                -0.34952141157973426,
+                0.2726365245590117,
+                0.02596214134324837
+              ],
+              [
+                -0.3391135813249223,
+                -0.2894859354653337,
+                0.025340234367288272
+              ]
+            ],
+            "tilt_rad": 0.02015415516003057,
+            "velocity_estimate": {
+              "estimated_velocity": [
+                6.496726118534545e-05,
+                -0.00018574860853273355,
+                0.0004549628706632114
+              ],
+              "contact_valid": true,
+              "contact_disagreement": 0.0001781011802177596
+            },
+            "physics_time": 36.20399999999828,
+            "status_pacing": "wall_clock_physics_snapshot"
+          },
+          "success": true,
+          "error_code": ""
+        }
+      }
+    ],
+    "max_state_receive_gap_wall_s": 3.505237366989604,
+    "external_skill_rejected": true,
+    "terminal_replay_unchanged": true
+  },
+  "failed_take_preserved": {
+    "mission_id": "coord-dual_visual-1793009966",
+    "completed_steps": 2,
+    "error": "SKILL_SESSION_LOST",
+    "observation": "Concurrent recording, packaging and isolated tests; multi-topic receive gap about 9 s; safety expiry stopped mission. No watchdog threshold increased."
+  },
+  "capture": {
+    "source": "actual ROS messages",
+    "images": {
+      "front": 298,
+      "c0": 244,
+      "left": 244,
+      "right": 244,
+      "overview": 298,
+      "servo": 51
+    },
+    "dropped_records": 0,
+    "wall_seconds": 386.56411050099996,
+    "notes": "No commands published. Pose replay requires time-aligned odom; captions must disclose edits."
+  },
+  "restore": {
+    "passed": true,
+    "restored_meshes": 172,
+    "original_paths_used": false,
+    "robot_physics_signature": "62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98",
+    "onnx_output_shape": [
+      1,
+      12
+    ],
+    "model_sha256": "5940113c8001bdc7980c72d3b81f9a9821cc42406eb9ccf7e9da33add43e36d5",
+    "scope": "Runtime assets restored into separate empty directories; existing container dependencies. Not a fresh-machine Docker build."
+  },
+  "servo_gate": {
+    "trajectory_rejected_during_servo": true,
+    "stale_rejected": true,
+    "zero_stamp_accepted": true,
+    "out_of_range_rejected": true,
+    "unowned_rejected": true,
+    "old_owner_token_rejected": true,
+    "lease_survives_without_motor_commands": true,
+    "motor_command_expires_independently": true,
+    "passed": true
+  },
+  "runtime": {
+    "passed": true,
+    "scene_version": 2950877245,
+    "physics_time": 2.2539999999999734,
+    "fault": "",
+    "cmd_vel_publishers": [
+      "qda_command_mux"
+    ],
+    "model": {
+      "status": "ok"
+    },
+    "node_names": [
+      "algorithm_view",
+      "behavior_server",
+      "bt_navigator",
+      "bt_navigator_navigate_through_poses_rclcpp_node",
+      "bt_navigator_navigate_to_pose_rclcpp_node",
+      "controller_server",
+      "global_costmap",
+      "lifecycle_manager_navigation",
+      "local_brain",
+      "local_costmap",
+      "mission_coordinator",
+      "move_group",
+      "move_group_private_111104005776944",
+      "moveit_simple_controller_manager",
+      "planner_server",
+      "qda_command_mux",
+      "qda_frame_dump",
+      "qda_mapper",
+      "qda_mujoco",
+      "qda_perception",
+      "robot_skill_server",
+      "robot_state_publisher",
+      "runtime_readiness_probe",
+      "rviz2",
+      "servo_left",
+      "servo_left_private_100127945275888",
+      "servo_right",
+      "servo_right_private_97801366110416",
+      "static_transform_publisher_DeRwaGMz4t3hvsSL",
+      "transform_listener_impl_563f5a08c450",
+      "transform_listener_impl_57d0a26cf0d0",
+      "transform_listener_impl_5b10db2240f0",
+      "transform_listener_impl_650c6b3c4dd0",
+      "transform_listener_impl_650c6f3a6ff0",
+      "transform_listener_impl_70f888027740",
+      "transform_listener_impl_7a2638015870",
+      "transform_listener_impl_7ba7fc021f10",
+      "visual_servo"
+    ],
+    "health": {
+      "topics": {
+        "/locomotion/rl_status": {
+          "age_wall_s": 0.284,
+          "fresh": true,
+          "data": {
+            "reference_model_sha256": "5940113c8001bdc7980c72d3b81f9a9821cc42406eb9ccf7e9da33add43e36d5",
+            "scene_model_sha256": "25a4c1e4196d26515ae07e7cc58eb5668485faae6b7fbcd729907e3ada480dd2",
+            "robot_physics_signature": "62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98",
+            "runtime_ready": false,
+            "motion": "RL_ONNX_free_base_PD",
+            "localization": "simulation_truth",
+            "grasp": "disabled_pending_physical_verification",
+            "ready": true,
+            "fault": "",
+            "policy_ticks": 63,
+            "physics_ticks": 627,
+            "height": 0.509515321817535,
+            "desired_velocity": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "actual_body_velocity": [
+              -0.007842657262745356,
+              -0.00029325426674693835,
+              0.014198276319037771
+            ],
+            "foot_names": [
+              "FL",
+              "FR",
+              "RL",
+              "RR"
+            ],
+            "foot_contacts": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "foot_positions_world": [
+              [
+                0.3271015044499034,
+                0.2582098011204299,
+                0.02568327841108936
+              ],
+              [
+                0.3376423622293824,
+                -0.2608931071853648,
+                0.024074937971164223
+              ],
+              [
+                -0.33473260721323655,
+                0.23894997676340304,
+                0.025034099037636093
+              ],
+              [
+                -0.34410420668868724,
+                -0.23698231992080065,
+                0.026531969841395886
+              ]
+            ],
+            "tilt_rad": 0.01023294400322495,
+            "velocity_estimate": {
+              "estimated_velocity": [
+                -0.007556094716853659,
+                0.0002783948850101309,
+                0.013727825199792857
+              ],
+              "contact_valid": true,
+              "contact_disagreement": 0.031041883136277298
+            },
+            "physics_time": 2.2539999999999734,
+            "status_pacing": "wall_clock_physics_snapshot"
+          }
+        },
+        "/motion/command_owner": {
+          "age_wall_s": 0.196,
+          "fresh": true,
+          "data": {
+            "owner": "idle",
+            "stamp": 2.282,
+            "ttl_seconds": 0.25,
+            "reason": "",
+            "lease_owner": null,
+            "lease_mode": null,
+            "lease_expired": false,
+            "state_age_wall_s": 0.0890367719985079
+          }
+        },
+        "/motion/arm_modes": {
+          "age_wall_s": 0.288,
+          "fresh": true,
+          "data": {
+            "servo": [],
+            "trajectory": [],
+            "accepted_servo_messages": {
+              "left": 0,
+              "right": 0
+            },
+            "rejected_servo_messages": {
+              "left": {},
+              "right": {}
+            },
+            "servo_command_fresh": {},
+            "bias_compensated_joints": []
+          }
+        },
+        "/perception/labels": {
+          "age_wall_s": 1.742,
+          "fresh": true,
+          "data": {
+            "text": "pick:color:1074"
+          }
+        },
+        "/brain/mission_status": {
+          "age_wall_s": 0.237,
+          "fresh": true,
+          "data": {
+            "active": null,
+            "mission_id": "coord-dual_visual-1793010424",
+            "status": "SUCCEEDED",
+            "completed_steps": 4,
+            "total_steps": 4,
+            "step_results": [
+              {
+                "index": 0,
+                "task_id": "mission.7641f401d969379dee9b2053.0",
+                "action_status": 4,
+                "result": {
+                  "task_id": "mission.7641f401d969379dee9b2053.0",
+                  "skill": "navigate",
+                  "success": true,
+                  "error_code": ""
+                }
+              },
+              {
+                "index": 1,
+                "task_id": "mission.7641f401d969379dee9b2053.1",
+                "action_status": 4,
+                "result": {
+                  "task_id": "mission.7641f401d969379dee9b2053.1",
+                  "skill": "visual_align",
+                  "initial_error_px": 18.432086944580078,
+                  "final_error_px": 1.4188790321350098,
+                  "success": true,
+                  "error_code": ""
+                }
+              },
+              {
+                "index": 2,
+                "task_id": "mission.7641f401d969379dee9b2053.2",
+                "action_status": 4,
+                "result": {
+                  "task_id": "mission.7641f401d969379dee9b2053.2",
+                  "skill": "visual_align",
+                  "initial_error_px": 24.160390853881836,
+                  "final_error_px": 1.0065871477127075,
+                  "success": true,
+                  "error_code": ""
+                }
+              },
+              {
+                "index": 3,
+                "task_id": "mission.7641f401d969379dee9b2053.3",
+                "action_status": 4,
+                "result": {
+                  "task_id": "mission.7641f401d969379dee9b2053.3",
+                  "skill": "inspect",
+                  "locomotion": {
+                    "reference_model_sha256": "5940113c8001bdc7980c72d3b81f9a9821cc42406eb9ccf7e9da33add43e36d5",
+                    "scene_model_sha256": "25a4c1e4196d26515ae07e7cc58eb5668485faae6b7fbcd729907e3ada480dd2",
+                    "robot_physics_signature": "62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98",
+                    "runtime_ready": false,
+                    "motion": "RL_ONNX_free_base_PD",
+                    "localization": "simulation_truth",
+                    "grasp": "disabled_pending_physical_verification",
+                    "ready": true,
+                    "fault": "",
+                    "policy_ticks": 1761,
+                    "physics_ticks": 17602,
+                    "height": 0.49574698307072723,
+                    "desired_velocity": [
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "actual_body_velocity": [
+                      4.9873965386121434e-05,
+                      -0.00018153487335518547,
+                      0.00043138862814041603
+                    ],
+                    "foot_names": [
+                      "FL",
+                      "FR",
+                      "RL",
+                      "RR"
+                    ],
+                    "foot_contacts": [
+                      1.0,
+                      1.0,
+                      1.0,
+                      1.0
+                    ],
+                    "foot_positions_world": [
+                      [
+                        0.35357885542274103,
+                        0.31732393645489676,
+                        0.024920490452208427
+                      ],
+                      [
+                        0.3181696515414764,
+                        -0.3017634883656542,
+                        0.025116495386106164
+                      ],
+                      [
+                        -0.34952141157973426,
+                        0.2726365245590117,
+                        0.02596214134324837
+                      ],
+                      [
+                        -0.3391135813249223,
+                        -0.2894859354653337,
+                        0.025340234367288272
+                      ]
+                    ],
+                    "tilt_rad": 0.02015415516003057,
+                    "velocity_estimate": {
+                      "estimated_velocity": [
+                        6.496726118534545e-05,
+                        -0.00018574860853273355,
+                        0.0004549628706632114
+                      ],
+                      "contact_valid": true,
+                      "contact_disagreement": 0.0001781011802177596
+                    },
+                    "physics_time": 36.20399999999828,
+                    "status_pacing": "wall_clock_physics_snapshot"
+                  },
+                  "success": true,
+                  "error_code": ""
+                }
+              }
+            ],
+            "current_step": 3,
+            "stage": "complete",
+            "success": true,
+            "error_code": "",
+            "quarantine": ""
+          }
+        }
+      },
+      "skill_server": true,
+      "mission_server": true,
+      "front_camera_fresh": true,
+      "model_autonomous_ready": false,
+      "physical_grasp_ready": false
+    },
+    "active": null,
+    "robot_physics_signature": "62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98"
+  },
+  "checks": {
+    "brain_unit": 4,
+    "coordination_unit": 4,
+    "release_bundle_unit": 2,
+    "isolated_mission_protocol": "passed",
+    "command_mux": "passed",
+    "paused_clock": "passed",
+    "late_cancel": "passed",
+    "mcp_tools": 8,
+    "physical_grasp_gate": "rejected as intended"
+  },
+  "limits": [
+    "not fresh-machine Docker rebuild",
+    "not long-route statistical validation",
+    "not physical grasp",
+    "not real microphone or RDK X5"
+  ],
+  "evidence_sha256": {
+    "output/product_demo/dual_visual_take01.json": "71c66b492716fb4e5a36ba71c73dce507b0b0a9ecb90a50d48d3a4e4b9171eaf",
+    "output/product_demo/dual_visual_take02.json": "99fa874f43e2c0aab093c967d4f8fc52c875f7ca6edacc0b5032fdcd8081de18",
+    "output/product_demo/take02/events.jsonl": "09c90b7610c50f82467c467d2a8ee37f0230d8aa65d932f614416f33cab7adb7",
+    "output/release_v0.2.0/qda-v0.2.0-runtime.tar.gz": "64c1551ea2f412bdec2025bfac2a4e733c6c57d0996da472284268da85930e43"
+  },
+  "build": {
+    "passed": true,
+    "packages": 11,
+    "environment": "existing ROS Humble container, symlink install",
+    "scope": "all qda packages; no clean-image rebuild",
+    "interface_clock_skew_warning": "Initial +0.16 second generated-file clock skew; subsequent interfaces-only rebuild passed without warnings."
+  }
+}

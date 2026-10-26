@@ -1,0 +1,60 @@
+{
+  "assets": [
+    {
+      "file": "robot.png",
+      "source": "output/model_refinement_v1/perspective.png",
+      "sha256": "018e3105beed0799554aafc8144f8990e329bd50edade5aa0614143e370e0463"
+    },
+    {
+      "file": "upper.png",
+      "source": "output/model_refinement_v1/upper_detail.png",
+      "sha256": "d4510291eab4fbddf5267ea29ed2f64eed4d002a0302bca2c98b425e39967da7"
+    },
+    {
+      "file": "gripper.png",
+      "source": "output/model_refinement_v1/gripper_detail.png",
+      "sha256": "1202321e6b7a73607c48c96971f08eee41c0abf3d2054766202cde29eadd61cd"
+    },
+    {
+      "file": "rl.mp4",
+      "source": "output/v2_audit/b2_contact_preview.mp4",
+      "sha256": "9f110c762d91148ccc9ffcca5b4d2bb0b522b0c2c8a1a90d92bec08d7cf1f825"
+    },
+    {
+      "file": "voice-status.wav",
+      "source": "output/v2_brain/voice/status.wav",
+      "sha256": "6d9de9b9bbf884b9a453fe94f9628d7617829f5d6633972acb21be97db92979d"
+    },
+    {
+      "file": "front.jpg",
+      "source": "output/product_demo/take02/front/000149.jpg",
+      "sha256": "b63e5ca2ddc4eafea5ddaf672106a1ee179e9af7805fc8052b941c8005f67bbe"
+    },
+    {
+      "file": "c0.jpg",
+      "source": "output/product_demo/take02/c0/000122.jpg",
+      "sha256": "3ca8ec5b3ab0137f751a6808b660f5d09f5264e64970bb4cb13342de7c67febe"
+    },
+    {
+      "file": "overview.jpg",
+      "source": "output/product_demo/take02/overview/000149.jpg",
+      "sha256": "d5395551a0595005cc6de82b6db7aa1b5b1055c94441dbea2ae7732fc035d564"
+    },
+    {
+      "file": "left.jpg",
+      "source": "output/product_demo/take02/left/000122.jpg",
+      "sha256": "3f5555518f0fa7872927958ba15a7e5b6f2c92a4ee35ec7541e84db982930e23"
+    },
+    {
+      "file": "right.jpg",
+      "source": "output/product_demo/take02/right/000122.jpg",
+      "sha256": "a0e399292343d50db7329788b443c5a9a9b9883e4fad3b7e056cae71c6281d3a"
+    }
+  ],
+  "take": "output\\product_demo\\take02",
+  "mission": "coord-dual_visual-1793010424",
+  "raw_camera_clips": "actual RGB frames, uniformly retimed to 14 seconds; not real-time latency",
+  "presentation_pose_replay": "recorded joints + truth odom, camera restaged; not a new physics run",
+  "voice": "Windows SAPI synthetic Mandarin; no cloned voice, no microphone",
+  "readme_publish_approved": false
+}

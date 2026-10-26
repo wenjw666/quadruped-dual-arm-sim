@@ -13,6 +13,7 @@ from qda_brain.contracts import SCENE_VERSION
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--preset',choices=['handoff','dual_visual'],default='handoff')
+    parser.add_argument('--output',help='Unique report path; omit for the historical acceptance location')
     args=parser.parse_args();rclpy.init();node=rclpy.create_node('coordination_acceptance')
     client=node.create_client(BrainRequest,'/brain/request');owners=[];metrics=[];state={};state_times=[]
     def owner(msg):
@@ -76,7 +77,8 @@ def main():
         if not report['passed']:
             try:call({'op':'pause'})
             except Exception:pass
-        target=Path('/ws/output/v2_brain/coordination_'+args.preset+'_acceptance.json');target.write_text(json.dumps(report,indent=2))
+        target=Path(args.output or '/ws/output/v2_brain/coordination_'+args.preset+'_acceptance.json')
+        target.parent.mkdir(parents=True,exist_ok=True);target.write_text(json.dumps(report,indent=2))
         print(json.dumps({k:v for k,v in report.items() if k not in ('owner_transitions','servo_samples','health','final_state')},ensure_ascii=False),flush=True)
         node.destroy_node();rclpy.shutdown()
 

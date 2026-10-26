@@ -1,4 +1,8 @@
-# 四足双臂机器人仿真 · V2 开发分支
+# 四足双臂机器人仿真 · V2 工程稳定基线
+
+**当前版本：v0.2.0** · [版本发布与安装](docs/RELEASE_V0.2.0.md) · [代码结构](docs/CODE_ARCHITECTURE.md) · [本轮验证摘要](docs/validation/release_v0.2.0.json)
+
+本版本固定已经联调的工程接口、运行资产和验证记录，适合继续开发和复现实验。RL 仍为实验性，完整物理取放、真实定位与板端部署尚未验收。
 
 ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-85 夹爪与顶部 RGB-D 相机。MuJoCo 为默认主后端，Gazebo 保留为对照后端，两者复用机器人、场景、感知、导航、操作与任务代码。
 
@@ -20,6 +24,8 @@ ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-
 在已构建并配置完成的工作区中：
 
 ```powershell
+.\start_brain.ps1 -WithSimulation -ServoFixture -NoPhysicsGui
+# 普通场景与 V1 对照入口：
 .\run_sim.ps1 -Scenario auto -Background
 .\stop_sim.ps1
 .\run_sim.ps1 -Scenario side -Background
@@ -29,7 +35,7 @@ ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-
 .\run_sim.ps1 -Backend gazebo -Scenario auto -Background
 ```
 
-本提交保存当前源码基础，不包含本机 `build/`、`install/`、Docker 镜像、日志、实验输出、下载缓存或 YOLO 权重。全新环境需要安装依赖并执行 colcon 构建；`docker/` 是现有构建配置，`docs/baseline/` 保存当前容器的软件清单供核对。本次上传未进行从空机器重建验证，不应把它视为已经验证的一键部署镜像。YOLO 权重可由 Ultralytics 下载，RGB-D 颜色分割主流程不依赖其标签输出。
+源码不包含本机 `build/`、`install/`、Docker 镜像、任务数据库或日志。V2 Release 附件提供带 SHA-256 校验的精确运行资产包，补齐策略、校准表及模型网格依赖；大脑模型由固定版本下载脚本获取。全新环境仍需安装依赖并执行 colcon 构建，见[安装说明](docs/RELEASE_V0.2.0.md)。已经验证资产在独立空目录恢复和加载，尚未完成空机器 Docker 全量重建验收。YOLO 标签不是 RGB-D 颜色几何主流程的必要条件。
 
 ## 说明与验证边界
 
@@ -48,4 +54,4 @@ V1 基线采用规定机器人运动、虚拟抓取与真值里程计；感知�
 
 ## 版本
 
-`v0.1.0-foundation` 标记本次奠基快照。第三方组件保留其原有许可证与声明；本仓库没有为所有第三方代码重新授予统一许可证。
+`v0.1.0-foundation` 保留第一版奠基快照；`v0.2.0` 固定第二版工程基线。第三方组件保留其原有许可证与声明；本仓库没有为所有第三方代码重新授予统一许可证。

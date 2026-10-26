@@ -1,0 +1,11 @@
+{
+  "fixes": [
+    {"issue":"Long world-space status text obscured RViz geometry","fix":"Dedicated status image dock plus full text topic","verification":"Actual RViz window captured and inspected"},
+    {"issue":"Map and results footnotes reached the caption band","fix":"Reduced panel spacing and chart height","verification":"Re-rendered both dense frames; all evidence limits visible"},
+    {"issue":"Video frame extraction errors followed by ENOSPC on system temp drive","fix":"Workspace temporary directory and deterministic FFmpeg frame sequences","verification":"Final full render and decoded media QC"},
+    {"issue":"Concurrent recording, packaging and tests coincided with multi-topic state gap","fix":"Bounded asynchronous recorder and separate heavy production stages","verification":"New four-step mission passed; recorder dropped zero records; original failed take retained"}
+  ],
+  "reusable_candidates":["evidence-driven RMS chart","scene manifest map","measured-WAV caption timeline","read-only ROS recording"],
+  "reuse_status":"Project-specific candidates; not yet validated as templates across two projects",
+  "audio_events":"Narration only; no music, sound effects, microphone or cloned voice"
+}

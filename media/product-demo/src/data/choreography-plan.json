@@ -1,0 +1,488 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "frames": 6848,
+  "scenes": [
+    {
+      "id": "hero",
+      "title": "让一个任务，调动整台机器人",
+      "eyebrow": "QDA / V2 SIMULATION",
+      "lines": [
+        "一台四足双臂机器人，需要的不只是动作。",
+        "它还需要把任务理解、路线规划和视觉反馈，组织成一次可追踪的执行。"
+      ],
+      "from": 0,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 136,
+          "file": "narration/hero-0.wav",
+          "text": "一台四足双臂机器人，需要的不只是动作。"
+        },
+        {
+          "fromFrame": 170,
+          "frames": 219,
+          "file": "narration/hero-1.wav",
+          "text": "它还需要把任务理解、路线规划和视觉反馈，组织成一次可追踪的执行。"
+        }
+      ],
+      "frames": 424,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "reveal model or verified capability boundary",
+      "result": "让一个任务，调动整台机器人",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "robot",
+      "title": "一套本体，四个观察视角",
+      "eyebrow": "01 / ROBOT & SENSORS",
+      "lines": [
+        "我们保留宇树四足，组合双机械臂、二指夹爪和中央相机。",
+        "头部与腕部图像，让环境感知和末端对准共享同一套机器人坐标。"
+      ],
+      "from": 424,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 190,
+          "file": "narration/robot-0.wav",
+          "text": "我们保留宇树四足，组合双机械臂、二指夹爪和中央相机。"
+        },
+        {
+          "fromFrame": 224,
+          "frames": 201,
+          "file": "narration/robot-1.wav",
+          "text": "头部与腕部图像，让环境感知和末端对准共享同一套机器人坐标。"
+        }
+      ],
+      "frames": 460,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "reveal model or verified capability boundary",
+      "result": "一套本体，四个观察视角",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "brain",
+      "title": "从一句话，到受限的技能提案",
+      "eyebrow": "02 / LOCAL INTELLIGENCE",
+      "lines": [
+        "文字、离线语音文件和工具接口，都进入本地大脑。",
+        "模型给出提案之后，还要通过语义与能力校验。",
+        "识别不清的指令会被拒绝，不会直接变成电机动作。"
+      ],
+      "from": 884,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 167,
+          "file": "narration/brain-0.wav",
+          "text": "文字、离线语音文件和工具接口，都进入本地大脑。"
+        },
+        {
+          "fromFrame": 201,
+          "frames": 149,
+          "file": "narration/brain-1.wav",
+          "text": "模型给出提案之后，还要通过语义与能力校验。"
+        },
+        {
+          "fromFrame": 360,
+          "frames": 156,
+          "file": "narration/brain-2.wav",
+          "text": "识别不清的指令会被拒绝，不会直接变成电机动作。"
+        }
+      ],
+      "frames": 551,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "waveform reveal and validated proposal",
+      "result": "从一句话，到受限的技能提案",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "mission",
+      "title": "先校验整段计划，再逐步执行",
+      "eyebrow": "03 / MISSION ORCHESTRATION",
+      "lines": [
+        "一个计划把导航、左臂对准、右臂对准和状态检查串起来。",
+        "每一步都有独立编号、完成条件和持久化记录。",
+        "上一阶段确认结束，下一阶段才取得控制权。"
+      ],
+      "from": 1435,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 187,
+          "file": "narration/mission-0.wav",
+          "text": "一个计划把导航、左臂对准、右臂对准和状态检查串起来。"
+        },
+        {
+          "fromFrame": 221,
+          "frames": 150,
+          "file": "narration/mission-1.wav",
+          "text": "每一步都有独立编号、完成条件和持久化记录。"
+        },
+        {
+          "fromFrame": 381,
+          "frames": 148,
+          "file": "narration/mission-2.wav",
+          "text": "上一阶段确认结束，下一阶段才取得控制权。"
+        }
+      ],
+      "frames": 564,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "step handoff and actual pose replay",
+      "result": "先校验整段计划，再逐步执行",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "map",
+      "title": "给算法更多可选路径",
+      "eyebrow": "04 / NAVIGATION",
+      "lines": [
+        "扩展工厂提供南北通道和侧向交付布局。",
+        "导航规划与局部控制共用传感器地图，当前定位使用仿真真值。",
+        "图中的路线是场景选项，复杂长路线仍需要专项验收。"
+      ],
+      "from": 1999,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 131,
+          "file": "narration/map-0.wav",
+          "text": "扩展工厂提供南北通道和侧向交付布局。"
+        },
+        {
+          "fromFrame": 165,
+          "frames": 197,
+          "file": "narration/map-1.wav",
+          "text": "导航规划与局部控制共用传感器地图，当前定位使用仿真真值。"
+        },
+        {
+          "fromFrame": 372,
+          "frames": 176,
+          "file": "narration/map-2.wav",
+          "text": "图中的路线是场景选项，复杂长路线仍需要专项验收。"
+        }
+      ],
+      "frames": 583,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "scene route options reveal",
+      "result": "给算法更多可选路径",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "rl",
+      "title": "让动作经过真实接触动力学",
+      "eyebrow": "05 / EXPERIMENTAL LOCOMOTION",
+      "lines": [
+        "这段台架记录展示站立、前进、侧移、转向和停止。",
+        "策略输出经过速度适配、关节控制和力矩限制，再推动自由基座。",
+        "它仍是实验性运控，不代表双臂载荷训练已经完成。"
+      ],
+      "from": 2582,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 178,
+          "file": "narration/rl-0.wav",
+          "text": "这段台架记录展示站立、前进、侧移、转向和停止。"
+        },
+        {
+          "fromFrame": 212,
+          "frames": 202,
+          "file": "narration/rl-1.wav",
+          "text": "策略输出经过速度适配、关节控制和力矩限制，再推动自由基座。"
+        },
+        {
+          "fromFrame": 424,
+          "frames": 162,
+          "file": "narration/rl-2.wav",
+          "text": "它仍是实验性运控，不代表双臂载荷训练已经完成。"
+        }
+      ],
+      "frames": 621,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "actual sequential physics footage",
+      "result": "让动作经过真实接触动力学",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "servo",
+      "title": "看见偏差，持续修正",
+      "eyebrow": "06 / DUAL-ARM VISUAL SERVO",
+      "lines": [
+        "到点后，底盘保持，机械臂先规划到视觉准备位姿。",
+        "真实腕部图像给出标记角点，再把像素偏差转成有界运动。",
+        "左右臂依次闭环，并保留碰撞、奇异性和超时保护。"
+      ],
+      "from": 3203,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 167,
+          "file": "narration/servo-0.wav",
+          "text": "到点后，底盘保持，机械臂先规划到视觉准备位姿。"
+        },
+        {
+          "fromFrame": 201,
+          "frames": 184,
+          "file": "narration/servo-1.wav",
+          "text": "真实腕部图像给出标记角点，再把像素偏差转成有界运动。"
+        },
+        {
+          "fromFrame": 395,
+          "frames": 168,
+          "file": "narration/servo-2.wav",
+          "text": "左右臂依次闭环，并保留碰撞、奇异性和超时保护。"
+        }
+      ],
+      "frames": 598,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "retimed real wrist frames",
+      "result": "看见偏差，持续修正",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "result",
+      "title": "结果，要能回到原始记录",
+      "eyebrow": "07 / MEASURED RESULTS",
+      "lines": [
+        "两条曲线来自同一轮双臂任务中的实际图像误差。",
+        "完成判据要求连续重新检测成功，短暂光流跟踪不能替代。",
+        "这些数据证明本轮对准完成，不被扩大成通用抓取成功率。"
+      ],
+      "from": 3801,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 150,
+          "file": "narration/result-0.wav",
+          "text": "两条曲线来自同一轮双臂任务中的实际图像误差。"
+        },
+        {
+          "fromFrame": 184,
+          "frames": 190,
+          "file": "narration/result-1.wav",
+          "text": "完成判据要求连续重新检测成功，短暂光流跟踪不能替代。"
+        },
+        {
+          "fromFrame": 384,
+          "frames": 185,
+          "file": "narration/result-2.wav",
+          "text": "这些数据证明本轮对准完成，不被扩大成通用抓取成功率。"
+        }
+      ],
+      "frames": 604,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "measured RMS polyline reveal",
+      "result": "结果，要能回到原始记录",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "observe",
+      "title": "同时看到动作、感知与算法状态",
+      "eyebrow": "08 / OBSERVABILITY",
+      "lines": [
+        "可视化窗口把机器人、地图、传感器和任务进度放在一起。",
+        "腕部画面、控制权和误差记录互相对应。",
+        "遇到问题，可以追到具体步骤，而不只是看到机器人停住。"
+      ],
+      "from": 4405,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 190,
+          "file": "narration/observe-0.wav",
+          "text": "可视化窗口把机器人、地图、传感器和任务进度放在一起。"
+        },
+        {
+          "fromFrame": 224,
+          "frames": 130,
+          "file": "narration/observe-1.wav",
+          "text": "腕部画面、控制权和误差记录互相对应。"
+        },
+        {
+          "fromFrame": 364,
+          "frames": 177,
+          "file": "narration/observe-2.wav",
+          "text": "遇到问题，可以追到具体步骤，而不只是看到机器人停住。"
+        }
+      ],
+      "frames": 576,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "reveal model or verified capability boundary",
+      "result": "同时看到动作、感知与算法状态",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "guard",
+      "title": "可靠协同，也包括正确地停下",
+      "eyebrow": "09 / CONTROL INTEGRITY",
+      "lines": [
+        "重复提交同一任务，只读取原结果。取消则等待下游真正结束。",
+        "指令或租约过期会停止运动；未验证的物理抓放会提前拒绝。",
+        "这次重负载采集也触发过保护停机，失败记录同样保留。"
+      ],
+      "from": 4981,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 214,
+          "file": "narration/guard-0.wav",
+          "text": "重复提交同一任务，只读取原结果。取消则等待下游真正结束。"
+        },
+        {
+          "fromFrame": 248,
+          "frames": 186,
+          "file": "narration/guard-1.wav",
+          "text": "指令或租约过期会停止运动；未验证的物理抓放会提前拒绝。"
+        },
+        {
+          "fromFrame": 444,
+          "frames": 177,
+          "file": "narration/guard-2.wav",
+          "text": "这次重负载采集也触发过保护停机，失败记录同样保留。"
+        }
+      ],
+      "frames": 656,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "stop/replay/cancel state comparison",
+      "result": "可靠协同，也包括正确地停下",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "backend",
+      "title": "同一工程，维护两条仿真路径",
+      "eyebrow": "10 / ENGINEERING BASELINE",
+      "lines": [
+        "机器人与场景定义由两个后端复用。",
+        "第二版的动力学和视觉协同以慕久科为主，另一后端保留首版对照。",
+        "源码、运行资产和验证摘要一起版本化，让结果有明确的来源。"
+      ],
+      "from": 5637,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 112,
+          "file": "narration/backend-0.wav",
+          "text": "机器人与场景定义由两个后端复用。"
+        },
+        {
+          "fromFrame": 146,
+          "frames": 201,
+          "file": "narration/backend-1.wav",
+          "text": "第二版的动力学和视觉协同以慕久科为主，另一后端保留首版对照。"
+        },
+        {
+          "fromFrame": 357,
+          "frames": 199,
+          "file": "narration/backend-2.wav",
+          "text": "源码、运行资产和验证摘要一起版本化，让结果有明确的来源。"
+        }
+      ],
+      "frames": 591,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "shared definitions split to backend roles",
+      "result": "同一工程，维护两条仿真路径",
+      "handoff": "Persistent chapter rail and orange progress line"
+    },
+    {
+      "id": "end",
+      "title": "第二版，是下一轮实验的起点",
+      "eyebrow": "QDA / REPRODUCIBLE SIMULATION",
+      "lines": [
+        "当前已经打通本地入口、技能编排、动力学与双腕视觉反馈。",
+        "接下来继续验证复杂路线、物理夹持、真实定位和板端部署。",
+        "让每一次改进，都有可复现的过程和可检查的结果。"
+      ],
+      "from": 6228,
+      "cues": [
+        {
+          "fromFrame": 24,
+          "frames": 196,
+          "file": "narration/end-0.wav",
+          "text": "当前已经打通本地入口、技能编排、动力学与双腕视觉反馈。"
+        },
+        {
+          "fromFrame": 230,
+          "frames": 189,
+          "file": "narration/end-1.wav",
+          "text": "接下来继续验证复杂路线、物理夹持、真实定位和板端部署。"
+        },
+        {
+          "fromFrame": 429,
+          "frames": 156,
+          "file": "narration/end-2.wav",
+          "text": "让每一次改进，都有可复现的过程和可检查的结果。"
+        }
+      ],
+      "frames": 620,
+      "input_state": "Previous chapter and persistent QDA rail",
+      "actors": [
+        "real media or evidence-based diagram",
+        "chapter heading",
+        "caption"
+      ],
+      "action": "reveal model or verified capability boundary",
+      "result": "第二版，是下一轮实验的起点",
+      "handoff": "Persistent chapter rail and orange progress line"
+    }
+  ],
+  "authority": "Each caption is timed to its own local SAPI WAV, measured by sample count; no microphone input.",
+  "invariant": "QDA wordmark, chapter rail, semantic colors and progress line remain mounted."
+}

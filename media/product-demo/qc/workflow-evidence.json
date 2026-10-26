@@ -1,0 +1,37 @@
+{
+  "delivery": "qda-v2-product-demo.mp4",
+  "sha256": "0060f14df6044378244e31b73d7b6abc3ffffad39409e6e4a6454684564c3026",
+  "duration_seconds": 228.3,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "video_codec": "h264",
+  "audio_codec": "aac",
+  "bytes": 21381342,
+  "semanticActionResult": "inspected against actual task data",
+  "persistentObjectHandoff": "QDA rail and progress line preserved",
+  "motionWindowReview": "sampled decoded frame windows; not a real-time performance test",
+  "cueSync": "WAV sample count per line",
+  "finalHold": {
+    "frameA": 6803,
+    "frameB": 6846,
+    "source_pixels_identical": true,
+    "encoded_pixels_identical": false,
+    "encoded_mean_abs_delta": 8.23045267489712e-05,
+    "encoded_max_delta": 2.0
+  },
+  "blackFramesDetected": false,
+  "notes": [
+    "12 chapter maximum-information frames visually inspected; map and result footer clipping repaired",
+    "Narration is offline synthetic Mandarin; no music or real microphone",
+    "Raw clips predecoded at 15 fps, output 30 fps; original media preserved",
+    "GUI and diagrams are labelled; current task does not validate physical grasp"
+  ],
+  "readme_publish_approved": false,
+  "audioNormalization": {
+    "method": "two-pass measured FFmpeg loudnorm",
+    "output_integrated_lufs": -16.45,
+    "output_true_peak_dbtp": -1.5,
+    "music": false
+  }
+}

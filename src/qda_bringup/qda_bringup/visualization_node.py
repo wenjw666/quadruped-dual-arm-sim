@@ -6,12 +6,13 @@ import time
 from pathlib import Path as FilePath
 
 import numpy as np
+import cv2
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, DurabilityPolicy, qos_profile_sensor_data
 from geometry_msgs.msg import PoseStamped, Point, Twist
 from nav_msgs.msg import Odometry, Path, OccupancyGrid
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, Image
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
 from moveit_msgs.msg import DisplayTrajectory
@@ -57,6 +58,8 @@ class AlgorithmView(Node):
         self.create_subscription(String,'/motion/command_owner',self.on_command_owner,10)
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.markers = self.create_publisher(MarkerArray, '/viz/markers', latched)
+        self.status_image = self.create_publisher(Image, '/viz/status_image', latched)
+        self.status_text = self.create_publisher(String, '/viz/status_text', latched)
         self.actual = self.create_publisher(Path, '/viz/actual_path', latched)
         self.tool = self.create_publisher(Path, '/viz/tool_path', latched)
         self.plan_pub = self.create_publisher(Path, '/viz/global_plan', latched)
@@ -274,7 +277,34 @@ class AlgorithmView(Node):
             stale=[name for name,row in self.module_health.get('topics',{}).items() if not row.get('fresh')]
             status+=f'\nModule freshness: {"OK" if not stale else ", ".join(stale)}'
         color = (0.3, 1, 0.65, 1) if 'TASK_SUCCESS' in self.stage else ((1, 0.3, 0.25, 1) if 'FAILED' in self.stage else (0.9, 0.94, 1, 1))
-        markers.append(self.marker(1, Marker.TEXT_VIEW_FACING, (1.3, 1.5, 1.9), (0, 0, 0.13), color, status))
+        self.status_text.publish(String(data=status))
+        # Long world-space text covers paths and is distorted by the font atlas
+        # on some X servers. Put readable diagnostics in a dedicated image dock.
+        old=self.marker(1, Marker.TEXT_VIEW_FACING, (0,0,0), (0,0,.1), color, '')
+        old.action=Marker.DELETE;markers.append(old)
+        r=self.rl_status;b=self.brain_status;m=self.mission_status;s=self.servo_metrics
+        lines=[f'{self.backend.upper()} | {"RL + physical PD (experimental)" if r else "kinematic comparison"}',
+               f'RTF {self.rtf:.2f} | owner: {self.command_owner}',
+               f'Fault: {r.get("fault") or "none"} | truth odometry',
+               f'Mission: {m.get("status","IDLE")}  {m.get("completed_steps",0)}/{m.get("total_steps",0)}',
+               f'Stage: {m.get("stage","idle")}',
+               f'Skill: {b.get("last_skill","none")} | {b.get("last_status","idle")}',
+               f'Error: {b.get("last_error") or "none"}',
+               f'IBVS {s.get("arm","-")}: {s.get("error_px",0):.2f} px | {"live" if time.monotonic()-self.servo_wall<5 else "last observation"}',
+               f'Features: {s.get("feature_source","-")}',
+               'Physical pick/place: NOT VALIDATED']
+        topics=self.module_health.get('topics',{})
+        stale=[name for name,entry in topics.items() if not entry.get('fresh')]
+        lines.append('Modules: '+(', '.join(stale) if stale else 'fresh' if topics else 'waiting'))
+        import textwrap
+        lines=[part for line in lines for part in textwrap.wrap(line,width=55)]
+        canvas=np.full((max(390,55+len(lines)*29),780,3),(39,29,23),dtype=np.uint8)
+        for row,line in enumerate(lines):
+            cv2.putText(canvas,line,(20,35+row*29),cv2.FONT_HERSHEY_SIMPLEX,.67,
+                        (145,220,185) if row==0 else (228,232,236),1,cv2.LINE_AA)
+        message=Image();message.header.stamp=self.get_clock().now().to_msg();message.header.frame_id='odom'
+        message.height,message.width=canvas.shape[:2];message.encoding='bgr8';message.step=message.width*3
+        message.data=canvas.tobytes();self.status_image.publish(message)
         self.markers.publish(MarkerArray(markers=markers))
 
 

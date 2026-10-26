@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>qda_mujoco</name><version>0.1.0</version>
+  <name>qda_mujoco</name><version>0.2.0</version>
   <description>MuJoCo backend using the shared QDA robot, scene and ROS interfaces.</description>
   <maintainer email="dev@example.com">qda</maintainer><license>Apache-2.0</license>
   <buildtool_depend>ament_python</buildtool_depend>
-  <exec_depend>rclpy</exec_depend><exec_depend>qda_bringup</exec_depend>
+  <exec_depend>rclpy</exec_depend><exec_depend>qda_locomotion</exec_depend>
   <exec_depend>qda_kinematics</exec_depend><exec_depend>qda_interfaces</exec_depend>
   <exec_depend>gazebo_msgs</exec_depend><exec_depend>control_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend><exec_depend>sensor_msgs_py</exec_depend>

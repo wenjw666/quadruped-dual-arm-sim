@@ -2,6 +2,8 @@
 
 更新：2026-10-26。工作区 `D:\20261022ubunturos_win` 挂载到 Docker 容器 `qda-dev:/ws`；ROS 2 Humble。主路径为 MuJoCo 自由基座动力学 + 实验性 B2 RL + Nav2 + MoveIt + 本地语义入口。Gazebo 保留 V1 对照路径。
 
+V2 发布补充：[v0.2.0 发布与恢复说明](RELEASE_V0.2.0.md)。运行资产通过独立校验包保存；RViz 状态改为 `/viz/status_image` 图像面板，完整文本通过 `/viz/status_text` 保留，避免长段世界文字遮挡场景。`media/product-demo/` 是与 ROS 构建隔离的视频制作工程；实际视频等待用户确认后再进入 README。
+
 ## 1. 运行关系
 
 ```mermaid
