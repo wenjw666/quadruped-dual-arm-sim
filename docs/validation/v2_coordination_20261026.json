@@ -1,0 +1,518 @@
+{
+  "date_local": "2026-10-26",
+  "scope": "Desktop Docker MuJoCo, fiducial IBVS, navigation goal at spawn",
+  "handoff": {
+    "passed": true,
+    "mission_id": "coord-handoff-1792986741",
+    "completed_steps": 4
+  },
+  "dual_visual": {
+    "passed": true,
+    "mission_id": "coord-dual_visual-1792986312",
+    "completed_steps": 4,
+    "arms": [
+      {
+        "task_id": "mission.cb2691cc1d6c5b3694857090.1",
+        "skill": "visual_align",
+        "initial_error_px": 21.87314224243164,
+        "final_error_px": 1.4188790321350098,
+        "success": true,
+        "error_code": ""
+      },
+      {
+        "task_id": "mission.cb2691cc1d6c5b3694857090.2",
+        "skill": "visual_align",
+        "initial_error_px": 23.424039840698242,
+        "final_error_px": 0.7163921594619751,
+        "success": true,
+        "error_code": ""
+      }
+    ],
+    "max_status_receive_gap_wall_s": 3.5623272279990488
+  },
+  "preflight": true,
+  "external_skill_rejected": true,
+  "replay": true,
+  "isolated_mission_protocol": true,
+  "mux": true,
+  "paused_clock": true,
+  "delayed_action_cancellation": true,
+  "unit_contracts": true,
+  "unit_tracking_and_leases": true,
+  "mcp": true,
+  "servo_gate": {
+    "trajectory_rejected_during_servo": true,
+    "stale_rejected": true,
+    "zero_stamp_accepted": true,
+    "out_of_range_rejected": true,
+    "unowned_rejected": true,
+    "old_owner_token_rejected": true,
+    "lease_survives_without_motor_commands": true,
+    "motor_command_expires_independently": true,
+    "passed": true
+  },
+  "shared_scene": {
+    "monitors": {
+      "right": {
+        "octomap_bytes": 2153350,
+        "octomap_frame": "odom",
+        "resolution": 0.05,
+        "objects": []
+      },
+      "left": {
+        "octomap_bytes": 2153350,
+        "octomap_frame": "odom",
+        "resolution": 0.05,
+        "objects": []
+      },
+      "move_group": {
+        "octomap_bytes": 2147190,
+        "octomap_frame": "odom",
+        "resolution": 0.05,
+        "objects": []
+      }
+    },
+    "passed": true
+  },
+  "robot_physics_signature": "62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98",
+  "final_fault": "",
+  "final_runtime": {
+    "passed": true,
+    "cmd_vel_publishers": [
+      "qda_command_mux"
+    ],
+    "model": {
+      "status": "ok"
+    },
+    "rviz_running": true,
+    "all_monitored_topics_fresh": true
+  },
+  "live_cancel_and_replay": true,
+  "limits": [
+    "Navigation handoff at spawn, not a long-route benchmark",
+    "KLT dropout checked with synthetic shifted images, not occlusion statistics",
+    "No physical pick-place acceptance",
+    "No real microphone or X5 deployment",
+    "Model autonomy still gated",
+    "No hot process recovery"
+  ],
+  "failed_development_trials": [
+    {
+      "file": "coordination_handoff_frame_mismatch.json",
+      "passed": false,
+      "mission": {
+        "task_id": "coord-handoff-1792982308",
+        "goal": {
+          "scene_version": 2950877245,
+          "steps": [
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "navigate",
+              "target_id": "start"
+            },
+            {
+              "arm": "left",
+              "object_id": "none",
+              "skill": "home",
+              "target_id": "none"
+            },
+            {
+              "arm": "right",
+              "object_id": "none",
+              "skill": "home",
+              "target_id": "none"
+            },
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "inspect",
+              "target_id": "none"
+            }
+          ]
+        },
+        "status": "CANCELLED",
+        "result": {
+          "completed_steps": 0,
+          "total_steps": 4,
+          "step_results": [],
+          "current_step": 0,
+          "stage": "stopped",
+          "success": false,
+          "error_code": "CANCELLED"
+        }
+      }
+    },
+    {
+      "file": "coordination_dual_visual_status_gap.json",
+      "passed": false,
+      "mission": {
+        "task_id": "coord-dual_visual-1792983013",
+        "goal": {
+          "scene_version": 2950877245,
+          "steps": [
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "navigate",
+              "target_id": "start"
+            },
+            {
+              "arm": "left",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "right",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "inspect",
+              "target_id": "none"
+            }
+          ]
+        },
+        "status": "FAILED",
+        "result": {
+          "completed_steps": 2,
+          "total_steps": 4,
+          "step_results": [
+            {
+              "index": 0,
+              "task_id": "mission.ce0a4976949b618ec863e0ea.0",
+              "action_status": 4,
+              "result": {
+                "task_id": "mission.ce0a4976949b618ec863e0ea.0",
+                "skill": "navigate",
+                "success": true,
+                "error_code": ""
+              }
+            },
+            {
+              "index": 1,
+              "task_id": "mission.ce0a4976949b618ec863e0ea.1",
+              "action_status": 4,
+              "result": {
+                "task_id": "mission.ce0a4976949b618ec863e0ea.1",
+                "skill": "visual_align",
+                "initial_error_px": 28.082834243774414,
+                "final_error_px": 0.7163921594619751,
+                "success": true,
+                "error_code": ""
+              }
+            },
+            {
+              "index": 2,
+              "task_id": "mission.ce0a4976949b618ec863e0ea.2",
+              "action_status": 6,
+              "result": {
+                "task_id": "mission.ce0a4976949b618ec863e0ea.2",
+                "skill": "visual_align",
+                "success": false,
+                "error_code": "LOCOMOTION_FAULT_OR_STALE"
+              }
+            }
+          ],
+          "current_step": 2,
+          "stage": "stopped",
+          "success": false,
+          "error_code": "LOCOMOTION_FAULT_OR_STALE"
+        }
+      }
+    },
+    {
+      "file": "coordination_dual_visual_slow_render.json",
+      "passed": false,
+      "mission": {
+        "task_id": "coord-dual_visual-1792983573",
+        "goal": {
+          "scene_version": 2950877245,
+          "steps": [
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "navigate",
+              "target_id": "start"
+            },
+            {
+              "arm": "left",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "right",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "inspect",
+              "target_id": "none"
+            }
+          ]
+        },
+        "status": "FAILED",
+        "result": {
+          "completed_steps": 2,
+          "total_steps": 4,
+          "step_results": [
+            {
+              "index": 0,
+              "task_id": "mission.f94a71e3e0d7de7f669c8cb1.0",
+              "action_status": 4,
+              "result": {
+                "task_id": "mission.f94a71e3e0d7de7f669c8cb1.0",
+                "skill": "navigate",
+                "success": true,
+                "error_code": ""
+              }
+            },
+            {
+              "index": 1,
+              "task_id": "mission.f94a71e3e0d7de7f669c8cb1.1",
+              "action_status": 4,
+              "result": {
+                "task_id": "mission.f94a71e3e0d7de7f669c8cb1.1",
+                "skill": "visual_align",
+                "initial_error_px": 19.77594566345215,
+                "final_error_px": 0.9270790815353394,
+                "success": true,
+                "error_code": ""
+              }
+            },
+            {
+              "index": 2,
+              "task_id": "mission.f94a71e3e0d7de7f669c8cb1.2",
+              "action_status": 6,
+              "result": {
+                "task_id": "mission.f94a71e3e0d7de7f669c8cb1.2",
+                "skill": "visual_align",
+                "success": false,
+                "error_code": "STALE_IMAGE(sim_age=0.200,wall_age=6.058)"
+              }
+            }
+          ],
+          "current_step": 2,
+          "stage": "stopped",
+          "success": false,
+          "error_code": "STALE_IMAGE(sim_age=0.200,wall_age=6.058)"
+        }
+      }
+    },
+    {
+      "file": "coordination_dual_visual_ownership.json",
+      "passed": false,
+      "mission": {
+        "task_id": "coord-dual_visual-1792984706",
+        "goal": {
+          "scene_version": 2950877245,
+          "steps": [
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "navigate",
+              "target_id": "start"
+            },
+            {
+              "arm": "left",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "right",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "inspect",
+              "target_id": "none"
+            }
+          ]
+        },
+        "status": "FAILED",
+        "result": {
+          "completed_steps": 1,
+          "total_steps": 4,
+          "step_results": [
+            {
+              "index": 0,
+              "task_id": "mission.cb8a02c208779f6de2fb7d19.0",
+              "action_status": 4,
+              "result": {
+                "task_id": "mission.cb8a02c208779f6de2fb7d19.0",
+                "skill": "navigate",
+                "success": true,
+                "error_code": ""
+              }
+            },
+            {
+              "index": 1,
+              "task_id": "mission.cb8a02c208779f6de2fb7d19.1",
+              "action_status": 6,
+              "result": {
+                "task_id": "mission.cb8a02c208779f6de2fb7d19.1",
+                "skill": "visual_align",
+                "success": false,
+                "error_code": "SERVO_OWNERSHIP_LOST"
+              }
+            }
+          ],
+          "current_step": 1,
+          "stage": "stopped",
+          "success": false,
+          "error_code": "SERVO_OWNERSHIP_LOST"
+        }
+      }
+    },
+    {
+      "file": "coordination_dual_visual_render_lock.json",
+      "passed": false,
+      "mission": {
+        "task_id": "coord-dual_visual-1792985288",
+        "goal": {
+          "scene_version": 2950877245,
+          "steps": [
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "navigate",
+              "target_id": "start"
+            },
+            {
+              "arm": "left",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "right",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "inspect",
+              "target_id": "none"
+            }
+          ]
+        },
+        "status": "FAILED",
+        "result": {
+          "completed_steps": 1,
+          "total_steps": 4,
+          "step_results": [
+            {
+              "index": 0,
+              "task_id": "mission.0198ccc7f7df5153cb684bd2.0",
+              "action_status": 4,
+              "result": {
+                "task_id": "mission.0198ccc7f7df5153cb684bd2.0",
+                "skill": "navigate",
+                "success": true,
+                "error_code": ""
+              }
+            },
+            {
+              "index": 1,
+              "task_id": "mission.0198ccc7f7df5153cb684bd2.1",
+              "action_status": 6,
+              "result": {
+                "task_id": "mission.0198ccc7f7df5153cb684bd2.1",
+                "skill": "visual_align",
+                "success": false,
+                "error_code": "SERVO_SERVICE_TIMEOUT"
+              }
+            }
+          ],
+          "current_step": 1,
+          "stage": "stopped",
+          "success": false,
+          "error_code": "SERVO_SERVICE_TIMEOUT"
+        }
+      }
+    },
+    {
+      "file": "coordination_dual_visual_lease_queue.json",
+      "passed": false,
+      "mission": {
+        "task_id": "coord-dual_visual-1792985858",
+        "goal": {
+          "scene_version": 2950877245,
+          "steps": [
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "navigate",
+              "target_id": "start"
+            },
+            {
+              "arm": "left",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "right",
+              "object_id": "servo_marker",
+              "skill": "visual_align",
+              "target_id": "none"
+            },
+            {
+              "arm": "none",
+              "object_id": "none",
+              "skill": "inspect",
+              "target_id": "none"
+            }
+          ]
+        },
+        "status": "FAILED",
+        "result": {
+          "completed_steps": 1,
+          "total_steps": 4,
+          "step_results": [
+            {
+              "index": 0,
+              "task_id": "mission.27b9bb1a8ed75efd53de1865.0",
+              "action_status": 4,
+              "result": {
+                "task_id": "mission.27b9bb1a8ed75efd53de1865.0",
+                "skill": "navigate",
+                "success": true,
+                "error_code": ""
+              }
+            },
+            {
+              "index": 1,
+              "task_id": "mission.27b9bb1a8ed75efd53de1865.1",
+              "action_status": 6,
+              "result": {
+                "task_id": "mission.27b9bb1a8ed75efd53de1865.1",
+                "skill": "visual_align",
+                "success": false,
+                "error_code": "SERVO_SERVICE_TIMEOUT"
+              }
+            }
+          ],
+          "current_step": 1,
+          "stage": "stopped",
+          "success": false,
+          "error_code": "SERVO_SERVICE_TIMEOUT"
+        }
+      }
+    }
+  ]
+}

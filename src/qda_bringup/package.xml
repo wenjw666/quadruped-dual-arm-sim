@@ -13,6 +13,7 @@
   <depend>qda_locomotion</depend>
   <depend>qda_perception</depend>
   <depend>qda_task</depend>
+  <exec_depend>qda_interfaces</exec_depend>
   <exec_depend>gazebo_ros</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>controller_manager</exec_depend>

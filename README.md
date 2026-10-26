@@ -8,7 +8,8 @@ ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-
 
 - 精修的机器人装配模型及共用 URDF → MuJoCo 转换。
 - 9 × 8.3 m 扩展工厂，自动、南侧、北侧及 90° 侧向交付场景。
-- NavFn / Omni MPPI 导航、MoveIt / 抓取 IK、RGB-D 感知、FAST-LIVO2 诊断流。
+- V2 Smac 2D / MPPI 导航、MoveIt / IBVS Servo、RGB-D 感知；V1 保留 NavFn 与 FAST-LIVO2 诊断路径。
+- 本地 SmolVLM、离线 WAV 语音、MCP、带持久化记录的多步骤技能编排和控制租约。
 - RViz 算法可视化、任务指标、独立运行记录与轮廓间隙审计脚本。
 - Docker 配置、Windows PowerShell 启停入口与模型/场景验证脚本。
 
@@ -37,6 +38,9 @@ ROS 2 Humble 仿真工作区：宇树四足底盘、Aubo A3 双臂、Robotiq 2F-
 - [机器人模型精修](MODEL_REFINEMENT.md)
 - [前期优化记录](OPTIMIZATION_V1.md)
 - [第三方源码快照说明](docs/THIRD_PARTY_SNAPSHOT.md)
+- [整体代码结构、模块关系和执行链](docs/CODE_ARCHITECTURE.md)
+- [本地大脑与语音启动](docs/V2_BRAIN_DEPLOYMENT.md)
+- [多模块协同改进与验收](docs/V2_COORDINATION.md)
 
 V1 的四类路线均取得完整任务通过记录，但属于分阶段功能验证，不能作为同版本统计成功率。详细原始实验记录仍保存在本机 `output/`，未上传本仓库；可通过 `run_scenarios.ps1` 重新生成。
 

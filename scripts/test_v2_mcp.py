@@ -16,7 +16,7 @@ async def main():
             proposal=await session.call_tool('interpret_text',{'text':'查询状态'})
             report={'tools':tools,'status':status.model_dump(mode='json'),'interpret':proposal.model_dump(mode='json')}
             def payload(result):return json.loads(next(c.text for c in result.content if c.type=='text'))
-            report['passed']=set(tools)=={'status','interpret_text','submit_skill','pause','cancel'} and payload(status).get('ok',False) and payload(proposal).get('ok',False)
+            report['passed']=set(tools)=={'status','interpret_text','submit_skill','pause','cancel','submit_mission','mission_status','cancel_mission'} and payload(status).get('ok',False) and payload(proposal).get('ok',False)
             Path('/ws/output/v2_brain/mcp_acceptance.json').write_text(json.dumps(report,indent=2,ensure_ascii=False))
             print(json.dumps(report,ensure_ascii=False),flush=True)
             assert report['passed'],report

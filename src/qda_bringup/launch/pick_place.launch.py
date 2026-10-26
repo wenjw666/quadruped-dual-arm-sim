@@ -511,7 +511,7 @@ def _launch(context, *args, **kwargs):
             brain_nodes.append(Node(package='moveit_servo',executable='servo_node_main',name='servo_'+side,
                 parameters=[descriptions,{'moveit_servo':params,'octomap_resolution':.05,'octomap_frame':'odom'},sim_time],
                 remappings=[('/planning_scene','/monitored_planning_scene')],output='log'))
-        for executable in ('skill_server','brain_node','visual_servo'):
+        for executable in ('skill_server','brain_node','visual_servo','mission_coordinator'):
             brain_nodes.append(Node(package='qda_brain',executable=executable,parameters=[sim_time],output='screen'))
         actions.append(TimerAction(period=8.,actions=brain_nodes))
     if run_task:

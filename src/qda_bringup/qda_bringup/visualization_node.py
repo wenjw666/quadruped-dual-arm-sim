@@ -48,6 +48,9 @@ class AlgorithmView(Node):
         self.metrics = {}
         self.rl_status={};self.command_owner='waiting'
         self.brain_status={};self.servo_metrics={};self.servo_wall=0.
+        self.mission_status={};self.module_health={}
+        self.create_subscription(String,'/brain/mission_status',lambda m:self.on_json(m,'mission_status'),10)
+        self.create_subscription(String,'/brain/health',lambda m:self.on_json(m,'module_health'),10)
         self.create_subscription(String,'/brain/status',self.on_brain,10)
         self.create_subscription(String,'/brain/servo_metrics',self.on_servo,10)
         self.create_subscription(String,'/locomotion/rl_status',self.on_rl_status,10)
@@ -82,6 +85,10 @@ class AlgorithmView(Node):
         try:self.brain_status=json.loads(msg.data)
         except ValueError:pass
 
+    def on_json(self,msg,attribute):
+        try:setattr(self,attribute,json.loads(msg.data))
+        except ValueError:pass
+
     def on_servo(self,msg):
         try:self.servo_metrics=json.loads(msg.data);self.servo_wall=time.monotonic()
         except ValueError:pass
@@ -91,7 +98,9 @@ class AlgorithmView(Node):
         except ValueError:pass
 
     def on_command_owner(self,msg):
-        try:self.command_owner=json.loads(msg.data).get('owner','unknown')
+        try:
+            data=json.loads(msg.data);self.command_owner=data.get('owner','unknown')
+            if data.get('reason'):self.command_owner+=' ('+data['reason']+')'
         except ValueError:pass
 
     def on_grid(self, msg, name):
@@ -257,6 +266,13 @@ class AlgorithmView(Node):
         if self.servo_metrics:
             s=self.servo_metrics;fresh='live' if time.monotonic()-self.servo_wall<5 else 'last observation'
             status+=f'\nIBVS {s.get("arm")} | {s.get("error_px",0):.2f} px | {s.get("depth_m",0):.3f} m | {fresh}'
+            status+=f' | {s.get("feature_source","aruco")}'
+        if self.mission_status:
+            m=self.mission_status
+            status+=f'\nMission: {m.get("status")} | {m.get("completed_steps",0)}/{m.get("total_steps",0)} | {m.get("stage","idle")}'
+        if self.module_health:
+            stale=[name for name,row in self.module_health.get('topics',{}).items() if not row.get('fresh')]
+            status+=f'\nModule freshness: {"OK" if not stale else ", ".join(stale)}'
         color = (0.3, 1, 0.65, 1) if 'TASK_SUCCESS' in self.stage else ((1, 0.3, 0.25, 1) if 'FAILED' in self.stage else (0.9, 0.94, 1, 1))
         markers.append(self.marker(1, Marker.TEXT_VIEW_FACING, (1.3, 1.5, 1.9), (0, 0, 0.13), color, status))
         self.markers.publish(MarkerArray(markers=markers))

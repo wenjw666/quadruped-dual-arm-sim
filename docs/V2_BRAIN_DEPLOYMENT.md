@@ -9,10 +9,10 @@
 | SmolVLM-500M Q8 + 投影器 | 官方 GGUF 和匹配 mmproj，llama.cpp CPU 本地服务，约束 JSON，事件触发 | 本机容器测试；不是 RDK X5 板端性能结论 |
 | 小智语音 | 固定版本官方源码和 MCP 配置，白名单工具桥 | 未配置账号与音频设备，不启动云端 ASR/LLM/TTS |
 | 本地离线语音 | Vosk 中文小模型 + Windows 中文 SAPI 合成文件 | 测试文件不等于真人麦克风评测；短机械臂口令有同音误识别 |
-| 任务决策/黑板 | 本地语义入口、固定目标登记、场景版本、SQLite 任务日志、幂等 ID、单任务执行、取消/超时 | 不是完整 BehaviorTree.CPP / MTC 实现 |
+| 任务决策/黑板 | 本地语义入口、目标登记/版本、SQLite、幂等 ID、1–12 步计划、技能会话、取消确认 | 受限序列状态机；不是完整 BehaviorTree.CPP / MTC 实现 |
 | 导航与回位 | 调用现有 Nav2 / MoveIt 规划与执行 Action | 导航仍使用仿真真值定位 |
 | 腕部 IBVS | ArUco 四角 + PnP 深度 + 阻尼伪逆，限速，准备姿态，MoveIt Servo | 独立光学校准板测试；未证明物体抓取或任意纹理伺服 |
-| 控制互斥 | 同一手臂轨迹/Servo 租约互斥，关节范围、步长、新鲜度和接收看门狗 | 取消保持关节，不自动打开夹爪 |
+| 控制互斥 | 底盘 hold/nav 租约、技能会话、同臂轨迹/Servo 互斥、双时钟新鲜度与看门狗 | 取消保持关节；下游停止未确认会隔离执行并要求整套重启 |
 | 物理抓放 | `pick_place` 语义接口已登记，但明确返回未验证 | 不能以虚拟吸附报告成功；力控、2 cm 放置验证、完整 MTC 尚待实施 |
 
 ## 启动
@@ -31,6 +31,8 @@ bash /ws/scripts/setup_v2_brain.sh
 
 ```powershell
 .\start_brain.ps1 -WithSimulation
+# 带光学校准板的视觉验收场景：
+.\start_brain.ps1 -WithSimulation -ServoFixture
 # 无图形界面验证：
 .\start_brain.ps1 -WithSimulation -Headless
 ```
@@ -69,7 +71,7 @@ SQLite 会把进程重启时尚未完成的任务标记为 `INTERRUPTED`。目�
 
 标准场景不含光学校准板。专用验收启动参数 `brain:=true servo_fixture:=true` 会增加两块不参与碰撞的板，并保持机器人质量、接触、驱动参数不变。标定板世界位姿只在场景构建时计算一次；运行控制使用图像角点和 PnP 深度，不读取板真值位置。
 
-`visual_align` 先用 MoveIt 规划到腕部余量充足的准备姿态，底盘稳定后切换 Servo 控制权。相机为 5 Hz；图像仿真时间超过 0.5 s 或墙钟长期不更新时停止。丢失标记立即发零速度，短暂等待重获，未恢复则退出；本轮未实现 KLT。四角 RMS 误差连续四帧低于阈值才报告成功。
+`visual_align` 先用 MoveIt 规划到腕部余量充足的准备姿态，底盘稳定后切换 Servo 控制权。相机为仿真时间 5 Hz；图像仿真年龄超过 0.5 s 或离线墙钟年龄超过 15 s 时停止。ArUco 失检时最多采用两帧、0.45 s 的 KLT 过渡，必须通过前后向、残差、位移、凸四边形与 PnP 重投影检查；失败立即零速度，短暂等待重获，未恢复则退出。四角 RMS 连续四帧低于阈值且四帧都重新检测到标记才报告成功。
 
 准备姿态通过 FCL 检查腕部间隙，避免照搬通用机械臂参数导致长期减速。Servo 使用规划组的基座和夹爪末端；相机速度通过 TF 的旋转与参考点偏移转换。适配层处理 Humble 的零时间戳约定，并按 MuJoCo 物理时间积分有界关节速度，避免墙钟与仿真时钟混用。选定手臂启用关节偏置力矩补偿，仍经过原有电机力矩上限；四足策略、机器人质量、接触参数不变。取消后保持位置，不开启夹爪。
 
@@ -82,7 +84,23 @@ RViz 新增 `/brain/servo_overlay` 角点画面，现有状态文字增加技能
 
 ## 小智与 MCP
 
-`config/xiaozhi_mcp.local.json` 使用官方 `mcpServers` stdio 格式，启动 `scripts/run_robot_mcp.sh`。工具为 `status`、`interpret_text`、`submit_skill`、`pause`、`cancel`，动作参数再次经过本地白名单校验。官方源码位于 `/opt/qda-brain-runtime/xiaozhi-in-rdk-<commit>/`，保持未激活状态。未来接入账号和音频设备时单独验证 MQTT/UDP、Opus、断网与端到端延迟。
+`config/xiaozhi_mcp.local.json` 使用官方 `mcpServers` stdio 格式，启动 `scripts/run_robot_mcp.sh`。八个工具为 `status`、`interpret_text`、`submit_skill`、`pause`、`cancel`、`submit_mission`、`mission_status`、`cancel_mission`，动作参数再次经过本地白名单校验。官方源码位于 `/opt/qda-brain-runtime/xiaozhi-in-rdk-<commit>/`，保持未激活状态。未来接入账号和音频设备时单独验证 MQTT/UDP、Opus、断网与端到端延迟。
+
+## 多步骤任务与模块协同
+
+见 [代码结构与关系](CODE_ARCHITECTURE.md) 和 [协同改进与验收](V2_COORDINATION.md)。容器内可生成并审阅有界计划：
+
+```bash
+python3 /ws/scripts/make_mission_plan.py --preset handoff --out /ws/output/v2_brain/handoff.json
+python3 /ws/scripts/brain_cli.py --plan /ws/output/v2_brain/handoff.json
+python3 /ws/scripts/brain_cli.py --plan /ws/output/v2_brain/handoff.json --execute --task-id demo-handoff-001
+python3 /ws/scripts/brain_cli.py --mission-status demo-handoff-001
+python3 /ws/scripts/brain_cli.py --mission-cancel demo-handoff-001
+```
+
+`handoff` 是到起点→左臂回位→右臂回位→查询；`dual_visual` 是到起点→左/右视觉对准→查询，需要 `-ServoFixture`；`inspection` 是到检查点→查询→返回，长路线尚未作本轮正式验收。计划先检查全部步骤，未开放的物理抓放会在任何动作前拒绝。单句中的复合指令会要求改用显式计划。
+
+计划持有技能会话，外部技能不能插入；每个运动技能持有底盘租约。租约过期、状态/时钟超过 5 s 墙钟不更新均保持底盘。MuJoCo RL 状态按墙钟频率从真实物理更新处发布，避免慢速渲染时按仿真间隔造成误报。版本号包含场景和目标登记，新增目标后必须重新生成计划。
 
 ## 可复核入口
 

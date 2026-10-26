@@ -6,6 +6,8 @@ def command(corners,depths,k,desired_depth=.30,marker_size=.08,gain=.6):
     corners=np.asarray(corners,dtype=float).reshape(4,2);z=np.asarray(depths,dtype=float).reshape(4)
     if not np.all(np.isfinite(corners)) or not np.all(np.isfinite(z)) or np.any(z<.08) or np.any(z>1.5):raise ValueError('INVALID_DEPTH')
     if not .15<=desired_depth<=.8:raise ValueError('INVALID_DESIRED_DEPTH')
+    k=np.asarray(k,dtype=float)
+    if k.shape!=(3,3) or not np.all(np.isfinite(k)) or k[0,0]<=0 or k[1,1]<=0:raise ValueError('INVALID_INTRINSICS')
     fx,fy,cx,cy=k[0,0],k[1,1],k[0,2],k[1,2]
     xy=(corners-[cx,cy])/[fx,fy];a=marker_size/(2*desired_depth)
     desired=np.array([[-a,-a],[a,-a],[a,a],[-a,a]])

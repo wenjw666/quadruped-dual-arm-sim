@@ -9,6 +9,8 @@ from qda_interfaces.srv import BrainRequest
 def main():
     p=argparse.ArgumentParser();g=p.add_mutually_exclusive_group()
     g.add_argument('--text');g.add_argument('--wav');g.add_argument('--status',action='store_true');g.add_argument('--pause',action='store_true')
+    g.add_argument('--plan',help='JSON plan with scene_version and 1..12 whitelisted steps')
+    g.add_argument('--mission-status',metavar='MISSION_ID');g.add_argument('--mission-cancel',metavar='MISSION_ID')
     p.add_argument('--vlm',action='store_true');p.add_argument('--image',action='store_true')
     p.add_argument('--execute',action='store_true');p.add_argument('--task-id');a=p.parse_args()
     if a.execute and not a.task_id:p.error('--execute requires a stable --task-id for replay protection')
@@ -20,7 +22,14 @@ def main():
         if not f.done():raise TimeoutError('BRAIN_TIMEOUT')
         return json.loads(f.result().response_json)
     try:
-        if a.status or a.pause:result=call({'op':'pause' if a.pause else 'status'})
+        if a.mission_status or a.mission_cancel:
+            result=call({'op':'mission_cancel' if a.mission_cancel else 'mission_status','mission_id':a.mission_cancel or a.mission_status})
+        elif a.plan:
+            from pathlib import Path
+            from qda_brain.mission import validate_plan
+            plan=validate_plan(json.loads(Path(a.plan).read_text(encoding='utf-8')))
+            result=call({'op':'mission_submit','mission_id':a.task_id,'plan':plan}) if a.execute else dict(ok=True,validated_plan=plan,executed=False)
+        elif a.status or a.pause:result=call({'op':'pause' if a.pause else 'status'})
         else:
             text=a.text;asr=None
             if a.wav:

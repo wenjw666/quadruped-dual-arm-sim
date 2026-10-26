@@ -6,15 +6,15 @@ import sqlite3
 import threading
 import time
 import math
-from qda_kinematics.scene import scene_manifest,PLACE_MARKER_XYZ,PLACE_YAW,APPROACH_IN_BASE
+from qda_kinematics.scene import scene_manifest,PLACE_MARKER_XYZ,PLACE_YAW,APPROACH_IN_BASE,SPAWN_XYZ,SPAWN_YAW
 
 SKILLS=('navigate','home','inspect','visual_align','pick_place','pause')
-TARGETS={'inspection':(-.2,1.,0.),'north_entry':(-.25,2.25,0.),'south_entry':(.1,-1.85,0.),
+TARGETS={'start':(*SPAWN_XYZ[:2],SPAWN_YAW),'inspection':(-.2,1.,0.),'north_entry':(-.25,2.25,0.),'south_entry':(.1,-1.85,0.),
          'pick_station':(.14,-.16,0.),'place_station':(
              PLACE_MARKER_XYZ[0]-math.cos(PLACE_YAW)*APPROACH_IN_BASE[0]+math.sin(PLACE_YAW)*APPROACH_IN_BASE[1],
              PLACE_MARKER_XYZ[1]-math.sin(PLACE_YAW)*APPROACH_IN_BASE[0]-math.cos(PLACE_YAW)*APPROACH_IN_BASE[1],PLACE_YAW)}
 OBJECTS=('none','red_cube','servo_marker')
-SCENE_VERSION=int(hashlib.sha256(json.dumps(scene_manifest(),sort_keys=True).encode()).hexdigest()[:8],16)
+SCENE_VERSION=int(hashlib.sha256(json.dumps({'scene':scene_manifest(),'targets':TARGETS},sort_keys=True).encode()).hexdigest()[:8],16)
 SCHEMA={'type':'object','additionalProperties':False,'required':['skill','object_id','target_id','arm'],
  'properties':{'skill':{'type':'string','enum':list(SKILLS)},'object_id':{'type':'string','enum':list(OBJECTS)},
                'target_id':{'type':'string','enum':['none',*TARGETS]},'arm':{'type':'string','enum':['none','left','right']}}}
@@ -38,7 +38,12 @@ def validate(proposal):
 def parse_local(text):
     """Explicit limited-command alternative, labelled rules rather than VLM."""
     t=text.strip().lower().replace(' ','')
-    if not t or len(t)>500 or any(w in t for w in ('不要','别','not','ignore','忽略','然后',';','；')):raise ValueError('AMBIGUOUS_OR_NEGATED_REQUEST')
+    if (not t or len(t)>500 or re.search(r'\b(?:then|and|not|ignore)\b',text.lower())
+        or any(w in t for w in ('不要','别','忽略','然后','之后','同时','并且','以及','再',';','；'))):raise ValueError('AMBIGUOUS_OR_NEGATED_REQUEST')
+    families=[any(w in t for w in words) for words in (('回位','回到初始','home'),('对准','align'),
+        ('导航','前往','去','navigate','goto'))]
+    families.append(any(w in t for w in ('查询状态','查看状态','当前状态')) or bool(re.search(r'\b(?:status|inspect)\b',text.lower())))
+    if sum(families)>1:raise ValueError('MULTIPLE_SKILLS_REQUIRE_EXPLICIT_PLAN')
     if any(w in t for w in ('左','left')) and any(w in t for w in ('右','right')):raise ValueError('AMBIGUOUS_ARM')
     p=dict(skill='inspect',object_id='none',target_id='none',arm='none')
     if t in ('暂停','停止','停下','pause','stop'):p['skill']='pause'
@@ -48,7 +53,7 @@ def parse_local(text):
     elif ('对准' in t or 'align' in t):
         p.update(skill='visual_align',object_id='servo_marker',arm='left' if '左' in t or 'left' in t else 'right' if '右' in t or 'right' in t else 'none')
     elif any(w in t for w in ('导航','前往','去','navigate','goto')):
-        targets=[key for key,words in {'inspection':('检查点','inspection'),'north_entry':('北侧','north'),
+        targets=[key for key,words in {'start':('起点','start'),'inspection':('检查点','inspection'),'north_entry':('北侧','north'),
             'south_entry':('南侧','south'),'pick_station':('抓取台','pickstation'),'place_station':('放置台','placestation')}.items() if any(w in t for w in words)]
         if len(targets)!=1:raise ValueError('AMBIGUOUS_NAV_TARGET')
         p.update(skill='navigate',target_id=targets[0])
@@ -66,7 +71,7 @@ class Journal:
         self.db.execute('CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, goal TEXT, status TEXT, result TEXT, updated REAL)')
         self.db.execute("UPDATE tasks SET status='INTERRUPTED', result=? WHERE status IN ('RUNNING','RESERVED')",(json.dumps({'success':False,'error_code':'PROCESS_RESTART'}),));self.db.commit()
     def reserve(self,task_id,goal):
-        if not re.fullmatch(r'[A-Za-z0-9_.:-]{1,128}',task_id):raise ValueError('INVALID_TASK_ID')
+        if not isinstance(task_id,str) or not re.fullmatch(r'[A-Za-z0-9_.:-]{1,128}',task_id):raise ValueError('INVALID_TASK_ID')
         encoded=json.dumps(goal,sort_keys=True)
         with self.lock:
             row=self.db.execute('SELECT goal,status,result FROM tasks WHERE id=?',(task_id,)).fetchone()

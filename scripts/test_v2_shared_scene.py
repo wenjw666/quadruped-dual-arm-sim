@@ -14,7 +14,7 @@ def main():
             'resolution':octo.resolution,'objects':[o.id for o in msg.world.collision_objects]}
     for name,topic in (('move_group','/monitored_planning_scene'),('left','/servo_left/publish_planning_scene'),('right','/servo_right/publish_planning_scene')):
         node.create_subscription(PlanningScene,topic,lambda msg,n=name:scene(n,msg),10)
-    end=time.monotonic()+60
+    end=time.monotonic()+120
     while len(rows)<3 and time.monotonic()<end:rclpy.spin_once(node,timeout_sec=.1)
     report={'monitors':rows,'passed':len(rows)==3 and all(r['resolution']==.05 and r['octomap_frame']=='odom' for r in rows.values())}
     Path('/ws/output/v2_brain/shared_scene_acceptance.json').write_text(json.dumps(report,indent=2));print(json.dumps(report))

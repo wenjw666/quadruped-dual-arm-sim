@@ -48,6 +48,18 @@ def main():
     def cancel()->dict:
         """Cancel the active skill and hold position."""
         return call({'op':'cancel'})
+    @mcp.tool()
+    def submit_mission(mission_id:str,scene_version:int,steps:list[dict])->dict:
+        """Submit 1..12 validated skills in order; stop on the first failed step."""
+        return call({'op':'mission_submit','mission_id':mission_id,'plan':{'scene_version':scene_version,'steps':steps}})
+    @mcp.tool()
+    def mission_status(mission_id:str='')->dict:
+        """Read sequence progress and each step's recorded result."""
+        return call({'op':'mission_status',**({'mission_id':mission_id} if mission_id else {})})
+    @mcp.tool()
+    def cancel_mission(mission_id:str)->dict:
+        """Cancel a sequence and wait asynchronously for its child to stop."""
+        return call({'op':'mission_cancel','mission_id':mission_id})
     try:mcp.run(transport='stdio')
     finally:
         executor.shutdown();thread.join(timeout=3);node.destroy_node()

@@ -9,6 +9,7 @@
     [switch]$NoRviz,
     [switch]$Manual,
     [switch]$Background,
+    [switch]$NoPhysicsGui,
     [switch]$Headless
 )
 $ErrorActionPreference = 'Stop'
@@ -21,7 +22,7 @@ if ($MotionMode -eq 'rl') {
     docker exec -e PYTHONPATH=/opt/qda-rl-v2 qda-dev python3 /ws/scripts/check_v2_scene_assets.py
     if ($LASTEXITCODE -ne 0) { throw 'V2 assets/dependencies are not ready; launch canceled.' }
 }
-$guiValue = if ($Headless) { 'false' } else { 'true' }
+$guiValue = if ($Headless -or $NoPhysicsGui) { 'false' } else { 'true' }
 $rvizValue = if ($NoRviz -or $Headless) { 'false' } else { 'true' }
 $taskValue = if ($Manual -or ($MotionMode -eq 'rl' -and -not $VirtualGraspComparison)) { 'false' } else { 'true' }
 $virtualValue = if ($VirtualGraspComparison) { 'true' } else { 'false' }

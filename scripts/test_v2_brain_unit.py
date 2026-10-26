@@ -11,7 +11,10 @@ class Contracts(unittest.TestCase):
     def test_commands_and_ambiguity(self):
         self.assertEqual(parse_local('导航到北侧')['target_id'],'north_entry')
         self.assertEqual(parse_local('右臂回位')['arm'],'right')
-        for text in ('不要去北侧','去北侧然后去南侧','左臂和右臂回位','去北侧和南侧','对准','随便抓东西'):
+        self.assertEqual(parse_local('Navigate to the north entry')['target_id'],'north_entry')
+        self.assertEqual(parse_local('Navigate to inspection')['target_id'],'inspection')
+        for text in ('不要去北侧','去北侧然后去南侧','左臂和右臂回位','去北侧和南侧','对准','随便抓东西',
+                     '左臂回位前往北侧','左臂回位再对准','left arm home and navigate north'):
             with self.assertRaises(ValueError):parse_local(text)
         with self.assertRaises(ValueError):validate(dict(skill='shell',object_id='none',arm='none',target_id='none'))
 

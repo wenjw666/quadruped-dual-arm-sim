@@ -11,6 +11,8 @@ os.environ.setdefault('MUJOCO_GL', 'egl')
 import math
 import threading
 import time
+import secrets
+import copy
 from pathlib import Path
 
 import mujoco
@@ -19,7 +21,7 @@ from scipy.interpolate import BPoly
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer, GoalResponse, CancelResponse
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.qos import qos_profile_sensor_data
 from builtin_interfaces.msg import Time
@@ -34,7 +36,7 @@ from control_msgs.action import FollowJointTrajectory
 from gazebo_msgs.srv import GetEntityState
 from std_srvs.srv import Empty, SetBool
 from trajectory_msgs.msg import JointTrajectory
-from qda_interfaces.srv import Attach, Detach
+from qda_interfaces.srv import Attach, Detach, BrainRequest
 from livox_ros_driver2.msg import CustomMsg, CustomPoint
 from ament_index_python.packages import get_package_share_directory
 from qda_kinematics.kinematics import LEG_JOINTS, stance_command, AUBO_HOME_LEFT, AUBO_HOME_RIGHT
@@ -67,7 +69,11 @@ class MujocoBackend(Node):
         else:raise ValueError('motion_mode must be kinematic or rl')
         self.lock = threading.RLock()
         self.group = ReentrantCallbackGroup()
+        # A burst of command callbacks waiting on physics must not consume every
+        # executor worker and starve ownership/cancellation services.
+        self.command_group=MutuallyExclusiveCallbackGroup()
         self.running = True
+        self.rl_status_wall=0.
         self.paused = False
         self.cmd = np.zeros(3)
         self.velocity = np.zeros(3)
@@ -88,6 +94,8 @@ class MujocoBackend(Node):
         self.object_dof = int(self.model.jnt_dofadr[self.model.joint('object_free').id])
         self.plans = {}
         self.servo_lease = {}
+        self.servo_tokens = {};self.servo_velocity_wall={}
+        self.servo_state_lock=threading.RLock()
         self.servo_received = {'left':0,'right':0}
         self.servo_velocity = {}
         self.servo_sim_stamp = {}
@@ -100,8 +108,10 @@ class MujocoBackend(Node):
         for prefix in ['left','right']:
             self.create_service(SetBool,f'/{prefix}_arm_controller/servo_mode',
                 lambda q,r,s=prefix:self.servo_mode(s,q,r),callback_group=self.group)
+            self.create_service(BrainRequest,f'/{prefix}_arm_controller/servo_lease',
+                lambda q,r,s=prefix:self.renew_servo(s,q,r),callback_group=self.group)
             self.create_subscription(JointTrajectory,f'/{prefix}_arm_controller/servo_joint_trajectory',
-                lambda msg,s=prefix:self.servo_target(s,msg),1,callback_group=self.group)
+                lambda msg,s=prefix:self.servo_target(s,msg),1,callback_group=self.command_group)
             for kind in ['arm','gripper']:
                 name=f'{prefix}_{kind}_controller'
                 names=[f'{prefix}_joint_link{i}' for i in range(1,8)] if kind=='arm' else [f'{prefix}_finger_{s}_joint' for s in ['left','right']]
@@ -109,7 +119,7 @@ class MujocoBackend(Node):
                     execute_callback=lambda h,n=name,js=names:self.execute(h,n,js),
                     goal_callback=lambda g,js=names:self.validate_goal(g,js),
                     cancel_callback=lambda _:CancelResponse.ACCEPT,callback_group=self.group))
-        self.create_subscription(Twist,'/cmd_vel',self.on_cmd,10,callback_group=self.group)
+        self.create_subscription(Twist,'/cmd_vel',self.on_cmd,1,callback_group=self.command_group)
         self.create_subscription(Float64MultiArray,'/leg_controller/commands',self.on_legs,10,callback_group=self.group)
         self.create_service(GetEntityState,'/get_entity_state',self.entity,callback_group=self.group)
         self.create_service(Attach,'/qda_grasp/attach',self.attach,callback_group=self.group)
@@ -200,13 +210,15 @@ class MujocoBackend(Node):
         return GoalResponse.ACCEPT
 
     def expire_servo(self):
-        for side,until in list(self.servo_lease.items()):
-            if time.monotonic()>until:
-                self.servo_lease.pop(side,None)
-                self.servo_velocity.pop(side,None)
-                for i in range(1,8):
-                    name=f'{side}_joint_link{i}';self.targets[name]=float(self.data.qpos[self.addresses[name]])
-                    if self.controller:self.controller.plant.velocity_reference[self.controller.plant.names.index(name)]=0.
+        with self.servo_state_lock:
+            for side,until in list(self.servo_lease.items()):
+                if time.monotonic()>until:
+                    self.servo_lease.pop(side,None)
+                    self.servo_tokens.pop(side,None)
+                    self.servo_velocity.pop(side,None)
+                    for i in range(1,8):
+                        name=f'{side}_joint_link{i}';self.targets[name]=float(self.data.qpos[self.addresses[name]])
+                        if self.controller:self.controller.plant.velocity_reference[self.controller.plant.names.index(name)]=0.
 
     def servo_mode(self,side,request,response):
         with self.lock:
@@ -215,7 +227,9 @@ class MujocoBackend(Node):
                 if (not self.controller or not self.controller.ready or self.controller.fault
                         or f'{side}_arm_controller' in self.plans or side in self.servo_lease):
                     response.success=False;response.message='Controller unavailable or already owned';return response
-                self.servo_lease[side]=time.monotonic()+5.
+                with self.servo_state_lock:
+                    self.servo_lease[side]=time.monotonic()+5.
+                    self.servo_tokens[side]=secrets.token_hex(16)
                 # Incremental position commands otherwise erase the static PD
                 # position error needed to balance gravity, making the arm sag.
                 # Keep bounded motor feedforward active during subsequent holds.
@@ -225,13 +239,29 @@ class MujocoBackend(Node):
                     plant.bias_compensation_mask[plant.names.index(joint)]=True
                     self.targets[joint]=float(self.data.qpos[self.addresses[joint]])
             else:
-                self.servo_lease.pop(side,None)
+                with self.servo_state_lock:
+                    self.servo_lease.pop(side,None)
+                    self.servo_tokens.pop(side,None)
                 self.servo_velocity.pop(side,None)
                 for i in range(1,8):
                     name=f'{side}_joint_link{i}';self.targets[name]=float(self.data.qpos[self.addresses[name]])
                     if self.controller:self.controller.plant.velocity_reference[self.controller.plant.names.index(name)]=0.
-            response.success=True;response.message='Servo owns arm' if request.data else 'Position held'
+            response.success=True;response.message=json.dumps({'token':self.servo_tokens[side]}) if request.data else 'Position held'
             return response
+
+    def renew_servo(self,side,request,response):
+        # Ownership heartbeat does not read or mutate physics. It must not queue
+        # behind ray casting, a trajectory callback or graphics work.
+        with self.servo_state_lock:
+            try:
+                payload=json.loads(request.request_json)
+                if (payload.get('op')!='renew' or time.monotonic()>=self.servo_lease.get(side,0.)
+                    or payload.get('token')!=self.servo_tokens.get(side)):
+                    raise ValueError('STALE_SERVO_LEASE')
+                self.servo_lease[side]=time.monotonic()+5.
+                result={'ok':True}
+            except Exception as exc:result={'ok':False,'error':str(exc)}
+            response.response_json=json.dumps(result);return response
 
     def servo_target(self,side,msg):
         def reject(reason):
@@ -259,8 +289,9 @@ class MujocoBackend(Node):
             # using physics time, not the number of wall-clock messages.
             self.servo_velocity[side]=dict(zip(msg.joint_names,point.velocities))
             self.servo_sim_stamp[side]=self.data.time
+            self.servo_velocity_wall[side]=time.monotonic()
             self.servo_received[side]+=1
-            self.servo_lease[side]=time.monotonic()+5.
+            with self.servo_state_lock:self.servo_lease[side]=time.monotonic()+5.
 
     def execute(self,handle,name,names):
         jt=handle.request.trajectory
@@ -442,12 +473,19 @@ class MujocoBackend(Node):
             # Full accelerometer simulation is a later sensor-stage requirement.
             imu.linear_acceleration_covariance[0]=-1.
             self.imu_pub.publish(imu)
-        if self.due('rl_status',.2):
+        # Diagnostics must stay fresh when software rendering slows simulation
+        # time. Sample only here, after an actual physics step, never repeat a
+        # cached state on an independent heartbeat that could hide a stalled plant.
+        status_wall=time.monotonic()
+        if status_wall-self.rl_status_wall>=.2:
+            self.rl_status_wall=status_wall
             self.arm_modes_pub.publish(String(data=json.dumps({'servo':list(self.servo_lease),
                 'trajectory':list(self.plans),'accepted_servo_messages':self.servo_received,
                 'rejected_servo_messages':self.servo_rejections,
+                'servo_command_fresh':{side:self.servo_command_fresh(side) for side in self.servo_lease},
                 'bias_compensated_joints':[n for n,on in zip(self.controller.plant.names,self.controller.plant.bias_compensation_mask) if on]})))
             status=self.controller.status();status['grasp']='virtual_fixed_attachment' if self.allow_virtual_grasp else 'disabled_pending_physical_verification'
+            status.update(physics_time=float(self.data.time),status_pacing='wall_clock_physics_snapshot')
             self.rl_pub.publish(String(data=json.dumps(status)))
             self.ready_pub.publish(Bool(data=self.controller.ready))
 
@@ -473,42 +511,50 @@ class MujocoBackend(Node):
                 livox.points=[CustomPoint(x=float(xyz[i,0]),y=float(xyz[i,1]),z=float(xyz[i,2]),reflectivity=80,tag=0,line=int(self.pattern_lines[indices[i]]),offset_time=int(i/2400*1e8)) for i in returned]
                 self.livox_pub.publish(livox)
 
-    def image(self,array,encoding,frame):
+    def image(self,array,encoding,frame,at=None):
         a=np.ascontiguousarray(array)
-        return Image(header=self.header(frame),height=a.shape[0],width=a.shape[1],encoding=encoding,is_bigendian=0,step=a.strides[0],data=a.tobytes())
+        header=self.header(frame) if at is None else Header(stamp=stamp(at),frame_id=frame)
+        return Image(header=header,height=a.shape[0],width=a.shape[1],encoding=encoding,is_bigendian=0,step=a.strides[0],data=a.tobytes())
 
-    def render_sensors(self):
+    def render_due(self):
+        periods=[('camera',.1),('overview',.25)]
+        if self.aux_renderer:periods.append(('aux_cameras',.2))
+        return any(self.data.time-self.last_pub.get(name,-1)>=period-1e-8
+                   for name,period in periods)
+
+    def render_sensors(self,data=None):
+        data=self.data if data is None else data
         if self.due('camera',.1):
             self.renderer.disable_depth_rendering()
-            self.renderer.update_scene(self.data,camera='head_camera',scene_option=self.render_option)
+            self.renderer.update_scene(data,camera='head_camera',scene_option=self.render_option)
             rgb=self.renderer.render().copy()
             self.renderer.enable_depth_rendering()
-            self.renderer.update_scene(self.data,camera='head_camera',scene_option=self.render_option)
+            self.renderer.update_scene(data,camera='head_camera',scene_option=self.render_option)
             depth=self.renderer.render().copy().astype(np.float32)
             depth[(depth<.05)|(depth>8.)]=np.nan
-            self.rgb_pub.publish(self.image(rgb,'rgb8','camera_optical_frame'))
-            self.depth_pub.publish(self.image(depth,'32FC1','camera_optical_frame'))
+            self.rgb_pub.publish(self.image(rgb,'rgb8','camera_optical_frame',data.time))
+            self.depth_pub.publish(self.image(depth,'32FC1','camera_optical_frame',data.time))
             fovy=self.model.cam_fovy[self.model.camera('head_camera').id]*math.pi/180
             focal=240/math.tan(fovy/2)
-            info=CameraInfo(header=self.header('camera_optical_frame'),height=480,width=640,distortion_model='plumb_bob',d=[0.]*5)
+            info=CameraInfo(header=Header(stamp=stamp(data.time),frame_id='camera_optical_frame'),height=480,width=640,distortion_model='plumb_bob',d=[0.]*5)
             info.k=[focal,0.,320.,0.,focal,240.,0.,0.,1.]
             info.r=[1.,0.,0.,0.,1.,0.,0.,0.,1.]
             info.p=[focal,0.,320.,0.,0.,focal,240.,0.,0.,0.,1.,0.]
             self.info_pub.publish(info)
         if self.aux_renderer and self.due('aux_cameras',.2):
             for name,(rgb_pub,info_pub) in self.aux_publishers.items():
-                self.aux_renderer.update_scene(self.data,camera=name,scene_option=self.render_option)
+                self.aux_renderer.update_scene(data,camera=name,scene_option=self.render_option)
                 frame=name+'_optical_frame'
-                rgb_pub.publish(self.image(self.aux_renderer.render(),'rgb8',frame))
+                rgb_pub.publish(self.image(self.aux_renderer.render(),'rgb8',frame,data.time))
                 focal=120/math.tan(math.radians(self.model.cam_fovy[self.model.camera(name).id])/2)
-                info=CameraInfo(header=self.header(frame),height=240,width=320,distortion_model='plumb_bob',d=[0.]*5)
+                info=CameraInfo(header=Header(stamp=stamp(data.time),frame_id=frame),height=240,width=320,distortion_model='plumb_bob',d=[0.]*5)
                 info.k=[focal,0.,160.,0.,focal,120.,0.,0.,1.]
                 info.r=[1.,0.,0.,0.,1.,0.,0.,0.,1.]
                 info.p=[focal,0.,160.,0.,0.,focal,120.,0.,0.,0.,1.,0.]
                 info_pub.publish(info)
         if self.due('overview',.25):
-            self.renderer.disable_depth_rendering();self.renderer.update_scene(self.data,camera='overview',scene_option=self.render_option)
-            self.overview_pub.publish(self.image(self.renderer.render(),'rgb8','overview_cam'))
+            self.renderer.disable_depth_rendering();self.renderer.update_scene(data,camera='overview',scene_option=self.render_option)
+            self.overview_pub.publish(self.image(self.renderer.render(),'rgb8','overview_cam',data.time))
 
     def run(self):
         self.renderer=mujoco.Renderer(self.model,height=480,width=640)
@@ -529,8 +575,13 @@ class MujocoBackend(Node):
                 if self.controller:
                     with self.lock:
                         self.step_dynamic()
-                        self.publish_state(np.zeros(3));self.render_sensors()
-                        if self.viewer and self.due('viewer',1/20):self.viewer.sync()
+                        self.publish_state(np.zeros(3))
+                        snapshot=copy.copy(self.data) if self.render_due() else None
+                    # Rendering can take seconds on software GL. Never hold the
+                    # actuator/service lock across it. Pixels retain the copied
+                    # physical sample's timestamp and never read changing data.
+                    if snapshot is not None:self.render_sensors(snapshot)
+                    if self.viewer and self.due('viewer',1/20):self.viewer.sync()
                     # Yield outside the data lock so action/service callbacks can
                     # acquire control even while software rendering runs slowly.
                     time.sleep(max(0.,dt-(time.monotonic()-wall)))
@@ -555,8 +606,9 @@ class MujocoBackend(Node):
                     mujoco.mj_step(self.model,self.data)
                     self.apply_robot();mujoco.mj_forward(self.model,self.data);self.update_held();mujoco.mj_forward(self.model,self.data)
                     self.publish_state(acceleration)
-                    self.render_sensors()
-                    if self.viewer and self.due('viewer',1/20):self.viewer.sync()
+                    snapshot=copy.copy(self.data) if self.render_due() else None
+                if snapshot is not None:self.render_sensors(snapshot)
+                if self.viewer and self.due('viewer',1/20):self.viewer.sync()
                 delay=dt-(time.monotonic()-wall)
                 if delay>0:time.sleep(delay)
         finally:
@@ -567,7 +619,7 @@ class MujocoBackend(Node):
     def step_dynamic(self):
         self.expire_servo()
         for side in self.servo_lease:
-            fresh=self.data.time-self.servo_sim_stamp.get(side,-1)<.35
+            fresh=self.servo_command_fresh(side)
             for i in range(1,8):
                 name=f'{side}_joint_link{i}';velocity=self.servo_velocity.get(side,{}).get(name,0.) if fresh else 0.
                 current=float(self.data.qpos[self.addresses[name]])
@@ -584,6 +636,10 @@ class MujocoBackend(Node):
         self.controller.step(target,self.targets)
         mujoco.mj_forward(self.model,self.data)
         if self.held is not None:self.update_held();mujoco.mj_forward(self.model,self.data)
+
+    def servo_command_fresh(self,side):
+        return (self.data.time-self.servo_sim_stamp.get(side,-1)<.35
+                and time.monotonic()-self.servo_velocity_wall.get(side,0.)<1.)
 
 
 def main():

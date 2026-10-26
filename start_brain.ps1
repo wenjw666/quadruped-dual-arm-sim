@@ -1,4 +1,4 @@
-param([switch]$WithSimulation, [switch]$Headless)
+param([switch]$WithSimulation, [switch]$Headless, [switch]$ServoFixture, [switch]$NoPhysicsGui)
 $ErrorActionPreference = 'Stop'
 docker exec qda-dev python3 /ws/scripts/prepare_v2_brain.py
 if ($LASTEXITCODE -ne 0) { throw 'Brain assets are incomplete or failed verification. Run scripts/setup_v2_brain.sh inside qda-dev first.' }
@@ -16,7 +16,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host 'SmolVLM Q8 + projector ready at container loopback 127.0.0.1:8088.'
 if ($WithSimulation) {
-    & (Join-Path $PSScriptRoot 'run_sim.ps1') -Brain -Manual -Background -Headless:$Headless
+    & (Join-Path $PSScriptRoot 'run_sim.ps1') -Brain -Manual -Background -Headless:$Headless -ServoFixture:$ServoFixture -NoPhysicsGui:$NoPhysicsGui
 } else {
     Write-Host 'Start the simulation with: .\run_sim.ps1 -Brain -Manual -Background'
 }
