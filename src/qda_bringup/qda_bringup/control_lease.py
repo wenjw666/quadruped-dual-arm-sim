@@ -32,7 +32,7 @@ class BaseLease:
             if not self.current or data.get('token') != self.current['token']:
                 raise ValueError('STALE_LEASE')
             if op == 'mode':
-                if data.get('mode') not in ('hold', 'nav'):
+                if data.get('mode') not in ('hold', 'nav', 'task'):
                     raise ValueError('INVALID_LEASE_MODE')
                 self.current['mode'] = data['mode']
             if op == 'release':

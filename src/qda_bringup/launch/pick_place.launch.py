@@ -248,7 +248,8 @@ def _launch(context, *args, **kwargs):
             from pathlib import Path
             target=Path(out)/'factory_dynamic.xml'
             build_dynamic_model(mjcf_path,urdf_path,
-                os.path.join(get_package_share_directory('qda_moveit_config'),'config','qda_robot.srdf'),target)
+                os.path.join(get_package_share_directory('qda_moveit_config'),'config','qda_robot.srdf'),target,
+                collision_cache='/ws/output/v2/collision_parts')
             mjcf_path=str(target)
             if _enabled(LaunchConfiguration('servo_fixture').perform(context)):
                 from qda_mujoco.servo_fixture import add_servo_fixture
@@ -300,6 +301,8 @@ def _launch(context, *args, **kwargs):
                    SetEnvironmentVariable('MUJOCO_GL', 'egl'),
                    Node(package='qda_mujoco', executable='mujoco_node', output='screen',
                         parameters=[{'model_path':mjcf_path, 'gui':gui,'motion_mode':motion_mode,
+                            'render_images':_enabled(LaunchConfiguration('render_images').perform(context)),
+                            'mapping_rgbd':_enabled(LaunchConfiguration('mapping_rgbd').perform(context)),
                             'allow_virtual_grasp':_enabled(LaunchConfiguration('allow_virtual_grasp').perform(context))}])]
         if dynamic:actions.append(Node(package='qda_bringup',executable='command_mux',parameters=[sim_time],output='screen'))
     if gui and backend == 'gazebo':
@@ -544,6 +547,8 @@ def generate_launch_description():
             DeclareLaunchArgument('scenario', default_value='auto', description='auto, north, south, side, or legacy'),
             DeclareLaunchArgument('output_dir', default_value='', description='Optional isolated output directory'),
             DeclareLaunchArgument("rviz", default_value="true", description="Algorithm dashboard; disable for headless benchmarks"),
+            DeclareLaunchArgument('render_images',default_value='true',description='Disable RGB/depth rendering for physical/ROS benchmarks; lidar remains active'),
+            DeclareLaunchArgument('mapping_rgbd',default_value='false',description='Accumulate observed RGB-D with simulation-truth registration'),
             DeclareLaunchArgument("fast_sim", default_value="false"),
             DeclareLaunchArgument("run_task", default_value="true"),
             DeclareLaunchArgument("use_neural", default_value="false"),

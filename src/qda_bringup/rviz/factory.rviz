@@ -241,6 +241,20 @@ Visualization Manager:
       Decay Time: 2
       Use Fixed Frame: true
     - Class: rviz_default_plugins/PointCloud2
+      Name: Accumulated RGB-D map / simulation-truth registration
+      Enabled: true
+      Topic:
+        Value: /mapping/colored_global
+        Depth: 1
+        History Policy: Keep Last
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: RGB8
+      Position Transformer: XYZ
+      Decay Time: 0
+    - Class: rviz_default_plugins/PointCloud2
       Name: Measured geometry / height
       Enabled: true
       Topic:

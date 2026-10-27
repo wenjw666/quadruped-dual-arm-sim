@@ -80,12 +80,13 @@ controller_server:
       required_movement_radius: 0.12
       movement_time_allowance: 30.0
     general_goal_checker:
-      stateful: true
+      stateful: false
       plugin: "nav2_controller::SimpleGoalChecker"
       # Coarse navigation stops outside the workbench's soft inflation band;
       # task-level approach alignment then enforces the 0.025 m grasp offset.
-      xy_goal_tolerance: 0.12
-      yaw_goal_tolerance: 0.18
+      xy_goal_tolerance: 0.06
+      # Leave margin for the loaded RL plant's final settling transient.
+      yaw_goal_tolerance: 0.06
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
       time_steps: 40
@@ -134,7 +135,7 @@ controller_server:
       GoalCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 5.0
+        cost_weight: 12.0
         threshold_to_consider: 1.2
       GoalAngleCritic:
         enabled: true
@@ -142,7 +143,9 @@ controller_server:
         cost_weight: 4.0
         threshold_to_consider: 1.2
       PreferForwardCritic:
-        enabled: true
+        # This is a holonomic loaded quadruped. Penalizing backward motion makes
+        # small lateral/retreat goals stall while the actor has a breakaway band.
+        enabled: false
         cost_power: 1
         cost_weight: 3.0
         threshold_to_consider: 0.4

@@ -167,7 +167,9 @@ class DetectorNode(Node):
         text.data = ",".join(labels) if labels else "none"
         self.label_pub.publish(text)
         try:
-            self.debug_pub.publish(self.bridge.cv2_to_imgmsg(debug, encoding="bgr8"))
+            debug_msg = self.bridge.cv2_to_imgmsg(debug, encoding="bgr8")
+            debug_msg.header = msg.header
+            self.debug_pub.publish(debug_msg)
         except Exception:
             pass
 

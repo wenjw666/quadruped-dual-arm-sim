@@ -30,10 +30,10 @@ def main():
         report['cancelled']=terminal(submission['task_id']);assert report['cancelled']['status']=='CANCELLED'
         assert call(submission)['accepted'];report['cancel_replay']=terminal(submission['task_id'])
         assert report['cancel_replay']==report['cancelled']
-        gate=dict(skill='pick_place',object_id='red_cube',target_id='place_station',arm='left')
+        gate=dict(skill='pick_place',object_id='red_cube',target_id='place_station',arm='right')
         assert call(dict(op='submit',task_id=prefix+'-pick',scene_version=version,proposal=gate))['accepted']
         report['grasp_gate']=terminal(prefix+'-pick')
-        assert report['grasp_gate']['result']['error_code']=='PHYSICAL_GRASP_NOT_VALIDATED'
+        assert report['grasp_gate']['result']['error_code']=='RIGHT_ARM_PHYSICAL_TASK_NOT_VALIDATED'
         report['voice_task']=call({'op':'status','task_id':'offline-voice-status-001'})['tasks']
         assert report['voice_task'][0]['status']=='SUCCEEDED'
         report['passed']=True

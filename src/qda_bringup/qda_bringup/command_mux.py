@@ -43,7 +43,7 @@ class CommandMux(Node):
             result=self.lease.request(data,time.monotonic())
             if data['op'] in ('acquire','mode','release','reset'):
                 self.commands.clear()
-                self.hold=not (self.lease.current and self.lease.current['mode']=='nav')
+                self.hold=not (self.lease.current and self.lease.current['mode'] in ('nav','task'))
         except Exception as exc:result={'ok':False,'error':str(exc)}
         response.response_json=json.dumps(result);return response
 
@@ -66,7 +66,7 @@ class CommandMux(Node):
                 else 'hold' if self.hold else '')
         owner='hold' if reason else 'idle';command=Twist()
         if owner!='hold':
-            sources=('nav',) if self.lease.current else ('manual','task','nav')
+            sources=(self.lease.current['mode'],) if self.lease.current else ('manual','task','nav')
             for source in sources:
                 if source in self.commands and 0<=now-self.commands[source][0]<=.25 and wall-self.commands[source][1]<=.25:
                     owner=source;command=self.commands[source][2];break

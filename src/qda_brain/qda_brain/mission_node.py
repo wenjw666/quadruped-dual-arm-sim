@@ -126,7 +126,7 @@ class MissionCoordinator(Node):
                 result_future=handle.get_result_async()
                 try:
                     if self.cancelled.is_set():raise RuntimeError('CANCELLED')
-                    result=self.wait(result_future,time.monotonic()+420)
+                    result=self.wait(result_future,time.monotonic()+(2460 if proposal['skill']=='pick_place' else 660 if proposal['skill']=='navigate' else 420))
                 finally:
                     if not result_future.done():
                         handle.cancel_goal_async()

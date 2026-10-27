@@ -50,6 +50,8 @@ class AlgorithmView(Node):
         self.rl_status={};self.command_owner='waiting'
         self.brain_status={};self.servo_metrics={};self.servo_wall=0.
         self.mission_status={};self.module_health={}
+        self.manipulation={};self.manipulation_wall=0.;self.object_points=deque(maxlen=2000)
+        self.create_subscription(String,'/manipulation/status',self.on_manipulation,10)
         self.create_subscription(String,'/brain/mission_status',lambda m:self.on_json(m,'mission_status'),10)
         self.create_subscription(String,'/brain/health',lambda m:self.on_json(m,'module_health'),10)
         self.create_subscription(String,'/brain/status',self.on_brain,10)
@@ -83,6 +85,12 @@ class AlgorithmView(Node):
     def on_metrics(self, msg):
         try:self.metrics=json.loads(msg.data)
         except ValueError:pass
+
+    def on_manipulation(self,msg):
+        try:self.manipulation=json.loads(msg.data);self.manipulation_wall=time.monotonic()
+        except ValueError:return
+        point=self.manipulation.get('object_xyz')
+        if point is not None:self.append_point(self.object_points,point,.01)
 
     def on_brain(self,msg):
         try:self.brain_status=json.loads(msg.data)
@@ -222,6 +230,14 @@ class AlgorithmView(Node):
         self.actual.publish(self.path(self.base_points))
         self.tool.publish(self.path(self.tool_points))
         markers = []
+        if self.manipulation.get('object_xyz'):
+            payload=self.marker(500,Marker.CUBE,self.manipulation['object_xyz'],(.04,.04,.04),(.95,.05,.03,1.))
+            q=self.manipulation.get('object_quat_wxyz',[1,0,0,0])
+            payload.pose.orientation.w,payload.pose.orientation.x,payload.pose.orientation.y,payload.pose.orientation.z=map(float,q)
+            markers.append(payload)
+            trail=self.marker(501,Marker.LINE_STRIP,(0,0,0),(.012,0,0),(1.,.25,.1,.85))
+            trail.points=[Point(x=float(p[0]),y=float(p[1]),z=float(p[2])) for p in self.object_points]
+            markers.append(trail)
         # These wireframes show the configured reference scene, not detections.
         for i, (name, pos, size, _) in enumerate(planning_boxes()):
             markers.append(self.marker(10+i, Marker.CUBE, pos, size, (0.35, 0.55, 0.72, 0.16)))
@@ -261,18 +277,23 @@ class AlgorithmView(Node):
                     f'\nPolicy ticks {r.get("policy_ticks",0)} | fault {r.get("fault") or "none"}'
                     '\nBlue: command | gold: simulated actual velocity | green feet: contact'
                     f'\nNavigation odometry: SIMULATION TRUTH\nGrasp: {r.get("grasp","unknown")}'
-                    f'\nTask: {self.stage_label(self.stage)}\nPerception: {self.labels[:65]}')
-        status+=f'\nScenario: {SCENARIO} | distance {self.metrics.get("path_m",0):.2f} m\nPlan calls/failures: {self.metrics.get("planning_calls",0)}/{self.metrics.get("planning_failures",0)} | vision fallback {len(self.metrics.get("perception_fallbacks",[]))}'
+                    f'\nTask: {self.manipulation.get("stage",self.stage_label(self.stage))}\nPerception: {self.labels[:65]}')
+        travelled=float(np.linalg.norm(np.diff(np.asarray(self.base_points),axis=0),axis=1).sum()) if len(self.base_points)>1 else 0.
+        status+=f'\nScenario: {SCENARIO} | observed base path {travelled:.2f} m'
+        if self.metrics:status+=f'\nPlan calls/failures: {self.metrics.get("planning_calls",0)}/{self.metrics.get("planning_failures",0)} | vision fallback {len(self.metrics.get("perception_fallbacks",[]))}'
         if self.brain_status:
             b=self.brain_status
             status+=f'\nBrain skill: {b.get("last_skill")} | {b.get("last_status")} | error {b.get("last_error") or "none"}'
+        if self.manipulation:
+            g=self.manipulation
+            status+=f'\nPhysical task: {g.get("stage")} | carrying {g.get("carrying")} | {g.get("error") or "no error"}'
         if self.servo_metrics:
             s=self.servo_metrics;fresh='live' if time.monotonic()-self.servo_wall<5 else 'last observation'
             status+=f'\nIBVS {s.get("arm")} | {s.get("error_px",0):.2f} px | {s.get("depth_m",0):.3f} m | {fresh}'
             status+=f' | {s.get("feature_source","aruco")}'
         if self.mission_status:
             m=self.mission_status
-            status+=f'\nMission: {m.get("status")} | {m.get("completed_steps",0)}/{m.get("total_steps",0)} | {m.get("stage","idle")}'
+            status+=f'\nLast mission: {m.get("status")} | {m.get("completed_steps",0)}/{m.get("total_steps",0)} | {m.get("stage","idle")}'
         if self.module_health:
             stale=[name for name,row in self.module_health.get('topics',{}).items() if not row.get('fresh')]
             status+=f'\nModule freshness: {"OK" if not stale else ", ".join(stale)}'
@@ -286,13 +307,17 @@ class AlgorithmView(Node):
         lines=[f'{self.backend.upper()} | {"RL + physical PD (experimental)" if r else "kinematic comparison"}',
                f'RTF {self.rtf:.2f} | owner: {self.command_owner}',
                f'Fault: {r.get("fault") or "none"} | truth odometry',
-               f'Mission: {m.get("status","IDLE")}  {m.get("completed_steps",0)}/{m.get("total_steps",0)}',
-               f'Stage: {m.get("stage","idle")}',
+               f'Last mission: {m.get("status","IDLE")}  {m.get("completed_steps",0)}/{m.get("total_steps",0)}',
+               f'Stage: {self.manipulation.get("stage",m.get("stage","idle"))}',
                f'Skill: {b.get("last_skill","none")} | {b.get("last_status","idle")}',
                f'Error: {b.get("last_error") or "none"}',
                f'IBVS {s.get("arm","-")}: {s.get("error_px",0):.2f} px | {"live" if time.monotonic()-self.servo_wall<5 else "last observation"}',
                f'Features: {s.get("feature_source","-")}',
-               'Physical pick/place: NOT VALIDATED']
+               f'Physical pick/place: {self.manipulation.get("stage","waiting")}',
+               f'Payload: {"held" if self.manipulation.get("carrying") else "released"} | {"live" if time.monotonic()-self.manipulation_wall<5 else "stale"}',
+               'Pad normal force (N): '+str([round(v,1) for v in self.manipulation.get('pad_normal_force_n',[])]),
+               f'Max slip: {1000*self.manipulation.get("max_slip_m",0):.1f} mm | pose: simulation truth',
+               'Physical error: '+(self.manipulation.get('error') or 'none')]
         topics=self.module_health.get('topics',{})
         stale=[name for name,entry in topics.items() if not entry.get('fresh')]
         lines.append('Modules: '+(', '.join(stale) if stale else 'fresh' if topics else 'waiting'))

@@ -9,14 +9,15 @@ import numpy as np
 from qda_kinematics.kinematics import LEG_JOINTS, stance_command, AUBO_HOME_LEFT, AUBO_HOME_RIGHT
 
 
-def build_dynamic_model(source, urdf, srdf, output, training=False):
+def build_dynamic_model(source, urdf, srdf, output, training=False, collision_cache=None):
     source, output = Path(source), Path(output)
     root = ET.parse(source).getroot()
     world = root.find('worldbody')
     robot = next(b for b in world.findall('body') if b.get('name') == 'base_link')
     robot_names = {b.get('name') for b in robot.iter('body')}
     # A single convex hull fills the wrist recess, unlike MoveIt's triangle
-    # mesh checks. Preserve its cavity with deterministic convex components.
+    # mesh checks. Deployment reuses the verified reference components: CoACD
+    # may change component order/geometry between runs even with a fixed seed.
     import coacd
     import trimesh
     coacd.set_log_level('warn')
@@ -29,8 +30,11 @@ def build_dynamic_model(source, urdf, srdf, output, training=False):
             if geom.get('group')!='1' or geom.get('type')!='mesh':continue
             original=mesh_assets[geom.get('mesh')];mesh_path=Path(original.get('file'))
             digest=hashlib.sha256(mesh_path.read_bytes()+b'coacd-1.0.7-threshold025-seed7').hexdigest()[:20]
-            folder=output.parent/'collision_parts'/digest;metadata=folder/'parts.json'
+            cache_root=Path(collision_cache) if collision_cache is not None else output.parent/'collision_parts'
+            folder=cache_root/digest;metadata=folder/'parts.json'
             if not metadata.exists():
+                if collision_cache is not None:
+                    raise FileNotFoundError(f'Verified collision cache missing: {metadata}; restore the reference runtime assets')
                 folder.mkdir(parents=True,exist_ok=True)
                 mesh=trimesh.load(mesh_path,force='mesh')
                 parts=coacd.run_coacd(coacd.Mesh(mesh.vertices,mesh.faces),threshold=.025,max_convex_hull=32,seed=7)
@@ -38,7 +42,10 @@ def build_dynamic_model(source, urdf, srdf, output, training=False):
                 for i,(vertices,faces) in enumerate(parts):
                     file=folder/f'{i}.obj';trimesh.Trimesh(vertices,faces).export(file);files.append(str(file.resolve()))
                 metadata.write_text(json.dumps(files))
-            files=json.loads(metadata.read_text());decomposition[body.get('name')]=len(files)
+            files=json.loads(metadata.read_text())
+            if not files or any(not Path(file).is_file() for file in files):
+                raise FileNotFoundError(f'Collision cache incomplete: {metadata}; restore its mesh assets')
+            decomposition[body.get('name')]=len(files)
             body.remove(geom)
             for i,file in enumerate(files):
                 name=geom.get('name')+f'_part{i}'

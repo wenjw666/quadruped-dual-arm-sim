@@ -14,6 +14,9 @@ TARGETS={'start':(*SPAWN_XYZ[:2],SPAWN_YAW),'inspection':(-.2,1.,0.),'north_entr
              PLACE_MARKER_XYZ[0]-math.cos(PLACE_YAW)*APPROACH_IN_BASE[0]+math.sin(PLACE_YAW)*APPROACH_IN_BASE[1],
              PLACE_MARKER_XYZ[1]-math.sin(PLACE_YAW)*APPROACH_IN_BASE[0]-math.cos(PLACE_YAW)*APPROACH_IN_BASE[1],PLACE_YAW)}
 OBJECTS=('none','red_cube','servo_marker')
+from qda_kinematics.scene import EXPANDED
+from qda_kinematics.navigation_examples import NAVIGATION_TARGETS
+if EXPANDED:TARGETS.update(NAVIGATION_TARGETS)
 SCENE_VERSION=int(hashlib.sha256(json.dumps({'scene':scene_manifest(),'targets':TARGETS},sort_keys=True).encode()).hexdigest()[:8],16)
 SCHEMA={'type':'object','additionalProperties':False,'required':['skill','object_id','target_id','arm'],
  'properties':{'skill':{'type':'string','enum':list(SKILLS)},'object_id':{'type':'string','enum':list(OBJECTS)},

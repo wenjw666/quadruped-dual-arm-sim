@@ -1,0 +1,22 @@
+{
+  "artifact": "output/ros2_graph/diagram-preview.png",
+  "finalArtifact": "docs/diagrams/ros2-network.png",
+  "round": 1,
+  "evidence": ["Desktop-executed", "command-executed", "exported PNG inspected"],
+  "validation": {"xml": "passed", "nodeCrossings": 0, "edgeCrossings": 0},
+  "visualResult": "Chinese labels readable; all node boxes, edge endpoints and bottom boundary notes inside page; no observed blocking overlap. Native rqt image inspected separately and intentionally remains dense.",
+  "unresolvedBlockers": [],
+  "issues": [
+    {"pageId":"Page-1","objectId":null,"region":"17 long node labels","problem":"clipped-label","severity":"info","evidence":"Validator length heuristic exceeds 14 characters; exported labels wrap inside their bounds without clipping.","suggestedAction":"Retain full node names for technical accuracy.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"skills->nav","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector. Exported NavigateToPose label is readable with white background.","suggestedAction":"No blocking repair required after visual inspection.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"mux->sim","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; exported cmd_vel label is offset into whitespace and readable.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"servo->sim","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; exported trajectory label is readable beside the line.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"skills->sim","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; physical service label is readable and does not cover a node.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"sim->brain","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags skills->visual connector; Desktop export places feedback label on the top return route, clear of that connector.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"sim->mapper","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; sensor label is readable above dashed route.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"sim->tf","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; joint_states label is readable.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"mapper->nav","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; map label is readable at left margin and remains on canvas.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"mapper->viz","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; map/cloud label is readable above horizontal segment.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"},
+    {"pageId":"Page-1","objectId":"tf->viz","problem":"edge-label-overlap","severity":"warning","evidence":"Validator flags own connector; TF label is readable above horizontal segment.","suggestedAction":"Retain current Desktop layout.","source":"deterministic"}
+  ]
+}

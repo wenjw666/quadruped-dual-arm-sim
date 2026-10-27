@@ -64,6 +64,10 @@ def robotiq(root,prefix):
             # commanded values are positive close angles; the right axis flips.
             e.remove(e.find('mimic'));e.find('axis').set('xyz','0 1 0')
             e.find('limit').set('lower','0');e.find('limit').set('upper','.8')
+        if e.get('name') in (prefix+'robotiq_85_right_finger_tip_joint',prefix+'robotiq_85_right_inner_knuckle_joint'):
+            # The independently actuated right jaw must keep its own linkage
+            # parallel under contact load, even when the left jaw deflects.
+            e.find('mimic').set('joint',prefix+'finger_right_joint')
         root.append(e)
     flange=link(root,prefix+'flange')
     shape(flange,'cylinder',(.0315,.006),(0,0,.003),color=SILVER)

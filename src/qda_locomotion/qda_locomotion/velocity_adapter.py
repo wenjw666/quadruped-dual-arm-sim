@@ -53,9 +53,14 @@ class VelocityAdapter:
                 moving=sorted((sign*r['mean_actual'][axis],abs(r['command'])) for r in rows if sign*r['mean_actual'][axis]>.025)
                 stopped=[abs(r['command']) for r in rows if sign*r['mean_actual'][axis]<=.025]
                 if not moving:raise ValueError('Missing command-response direction')
-                xs=[0.];ys=[max(stopped,default=0.)]
+                # Missing stopped samples do not establish a zero breakaway
+                # command. Interpolating from (0,0) can put every low-speed
+                # Nav2 command inside the actor's dead zone indefinitely.
+                # Start from the lowest measured moving command in that case;
+                # velocity feedback can reduce it, and exact zero still stands.
+                xs=[0.];ys=[max(stopped,default=moving[0][1])]
                 for x,y in moving:
-                    if x>xs[-1] and y>ys[-1]:xs.append(x);ys.append(y)
+                    if x>xs[-1] and y>=ys[-1]:xs.append(x);ys.append(y)
                 self.curves[axis,sign]=(xs,ys)
 
     def command(self,desired,plant,dt=.02):

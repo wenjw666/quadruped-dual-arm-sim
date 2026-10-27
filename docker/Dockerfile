@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
         git \
+        ffmpeg \
         python3-colcon-common-extensions \
         python3-pip \
         python3-numpy \
@@ -50,6 +51,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-humble-nav2-smac-planner \
         ros-humble-nav2-mppi-controller \
         ros-humble-rviz2 \
+        ros-humble-rqt-graph \
+        graphviz xvfb xauth \
     && rm -rf /var/lib/apt/lists/*
 
 # CPU wheels keep the image small. yolov8n is fast enough for one camera.

@@ -7,7 +7,8 @@ import numpy as np
 from qda_mujoco.dynamics import DynamicPlant
 
 
-def robot_physics_signature(model):
+def robot_physics_signature(model,version=2):
+    if version not in (1,2):raise ValueError('Unknown physics signature version')
     base=model.body('base_link').id
     bodies={base}
     for bid in range(base+1,model.nbody):
@@ -54,7 +55,11 @@ def robot_physics_signature(model):
                     'equality_solver':[model.eq_solref.tolist(),model.eq_solimp.tolist()],
                     'exclusions':model.exclude_signature.tolist(),'timestep':float(model.opt.timestep),
                     'gravity':model.opt.gravity.tolist(),'integrator':int(model.opt.integrator),
-                    'solver':int(model.opt.solver),'iterations':int(model.opt.iterations)})
+                    'solver':int(model.opt.solver),'iterations':int(model.opt.iterations),
+                    'cone':int(model.opt.cone),'enableflags':int(model.opt.enableflags),
+                    'disableflags':int(model.opt.disableflags),'noslip_iterations':int(model.opt.noslip_iterations)})
+    if version==1:
+        for key in ('cone','enableflags','disableflags','noslip_iterations'):records[-1].pop(key)
     return hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
@@ -69,7 +74,12 @@ class SceneController:
         self.plant=DynamicPlant(scene_path)
         scene_signature=robot_physics_signature(self.plant.model)
         if scene_signature!=reference_signature:
-            raise ValueError(f'Scene robot physics differs from trained plant: {scene_signature} != {reference_signature}')
+            # Accept only the explicitly audited right-jaw mimic repair. All
+            # other body, collision, actuator and solver differences still fail.
+            from .contact_profile import repair_gripper_mimics
+            repair_gripper_mimics(self.env.plant.model)
+            if scene_signature!=robot_physics_signature(self.env.plant.model):
+                raise ValueError(f'Scene robot physics differs from trained plant: {scene_signature} != {reference_signature}')
         if self.plant.names!=self.env.plant.names:raise ValueError('Scene actuator order mismatch')
         old=self.env.plant
         self.plant.home[:]=old.home;self.plant.kp[:]=old.kp;self.plant.kd[:]=old.kd
@@ -82,10 +92,16 @@ class SceneController:
         self.adapter=VelocityAdapter(self.plant,response_path,self.env.contract['model_sha256'])
         self.policy_ticks=0;self.physics_ticks=0;self.fault='';self.estimate={}
         self.target=self.plant.home.copy();self.ready=False
+        from .contact_profile import apply_contact_profile
+        contact_profile=apply_contact_profile(self.plant.model)
+        self.plant.bias_compensation_mask[self.plant.arm_indices]=True
         self.binding=dict(reference_model_sha256=self.env.contract['model_sha256'],
                           scene_model_sha256=hashlib.sha256(Path(scene_path).read_bytes()).hexdigest(),
                           robot_physics_signature=scene_signature,runtime_ready=False,
-                          motion='RL_ONNX_free_base_PD',localization='simulation_truth',grasp='virtual_attachment_disabled')
+                          motion='RL_ONNX_free_base_PD',localization='simulation_truth',grasp='physical_contact',
+                          contact_profile=contact_profile,physics_signature_version=2,upper_limb_control='bounded_PD_plus_bias',
+                          velocity_adapter='measured_breakaway_v2',
+                          effective_robot_physics_signature=robot_physics_signature(self.plant.model))
         Path(scene_path).with_suffix('.policy_binding.json').write_text(json.dumps(self.binding,indent=2))
 
     def step(self,command,upper_targets):

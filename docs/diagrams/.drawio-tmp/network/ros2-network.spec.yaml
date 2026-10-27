@@ -1,0 +1,398 @@
+meta:
+  profile: engineering-review
+  theme: tech-blue
+  source: generated
+  layout: vertical
+  canvas: 1760x1910
+  title: MuJoCo 主仿真 ROS 2 网络
+  font:
+    primary: Microsoft YaHei
+    cjk: Microsoft YaHei
+    formula: Microsoft YaHei
+nodes:
+  - id: title
+    type: text
+    label: 当前 ROS 2 主链路｜B2 + 双 Aubo · MuJoCo
+    bounds:
+      x: 100
+      'y': 16
+      width: 1560
+      height: 60
+    style:
+      fontSize: 32
+      fontStyle: 1
+  - id: subtitle
+    type: text
+    label: ROS 2 Humble · Domain 8｜实线：调用 / 控制　虚线：观测 / 反馈｜方框可含同组多个真实节点
+    bounds:
+      x: 100
+      'y': 80
+      width: 1560
+      height: 48
+    style:
+      fontSize: 19
+  - id: model
+    type: service
+    label: |-
+      llama-server / SmolVLM
+      外部 HTTP 进程 · 非 ROS 节点
+    bounds:
+      x: 140
+      'y': 176
+      width: 380
+      height: 112
+    style:
+      fillColor: '#FFF2D5'
+      strokeColor: '#BD8732'
+      fontSize: 20
+  - id: brain
+    type: service
+    label: |-
+      /local_brain
+      输入理解 · 提案审查 · 反馈复核
+      入口 /brain/request
+    bounds:
+      x: 680
+      'y': 176
+      width: 400
+      height: 112
+    style:
+      fontSize: 20
+  - id: mission
+    type: service
+    label: |-
+      /mission_coordinator
+      显式多步骤计划 · 顺序与重试
+      /mission/request
+    bounds:
+      x: 1240
+      'y': 176
+      width: 380
+      height: 112
+    style:
+      fontSize: 20
+  - id: skills
+    type: service
+    label: |-
+      /robot_skill_server
+      导航 / 物理抓放 / 对准 / 回位
+      /robot_skill · Action
+    bounds:
+      x: 680
+      'y': 408
+      width: 400
+      height: 112
+    style:
+      fontSize: 20
+  - id: nav
+    type: service
+    label: |-
+      Nav2 节点组
+      /bt_navigator → /planner_server
+      /controller_server · /behavior_server
+      局部 / 全局 costmap · lifecycle manager
+    bounds:
+      x: 140
+      'y': 664
+      width: 420
+      height: 136
+    style:
+      fontSize: 18
+  - id: moveit
+    type: service
+    label: |-
+      /move_group
+      OMPL 规划 · 轨迹执行
+      规划场景 / 碰撞检查
+    bounds:
+      x: 680
+      'y': 664
+      width: 400
+      height: 136
+    style:
+      fontSize: 20
+  - id: visual
+    type: service
+    label: |-
+      /visual_servo
+      腕部图像 → ArUco / PnP / IBVS
+      /visual_align · Action
+    bounds:
+      x: 1240
+      'y': 664
+      width: 380
+      height: 136
+    style:
+      fontSize: 18
+  - id: mux
+    type: service
+    label: |-
+      /qda_command_mux
+      nav / task / manual 租约仲裁
+      唯一 /cmd_vel 出口
+    bounds:
+      x: 140
+      'y': 912
+      width: 420
+      height: 112
+    style:
+      fontSize: 20
+  - id: servo
+    type: service
+    label: |-
+      /servo_left · /servo_right
+      MoveIt Servo
+      末端速度 → 关节轨迹
+    bounds:
+      x: 1240
+      'y': 912
+      width: 380
+      height: 112
+    style:
+      fontSize: 20
+  - id: sim
+    type: service
+    label: |-
+      /qda_mujoco
+      内部：B2 ONNX + PD 运控 + MuJoCo 动力学
+      内部：接触抓放状态机 · 相机 / 激光 / IMU
+      轨迹 Action · Servo · /manipulation/command
+    bounds:
+      x: 580
+      'y': 1144
+      width: 600
+      height: 160
+    style:
+      fillColor: '#DCEFE9'
+      strokeColor: '#458877'
+      fontSize: 20
+  - id: mapper
+    type: service
+    label: |-
+      /qda_mapper
+      激光栅格 / RGB-D 彩色点云
+      真值位姿配准（不是独立 SLAM）
+    bounds:
+      x: 140
+      'y': 1456
+      width: 420
+      height: 112
+    style:
+      fontSize: 18
+  - id: perception
+    type: service
+    label: |-
+      /qda_perception
+      RGB-D 检测 · 标签 · 目标位姿
+      /qda_frame_dump：画面保存
+    bounds:
+      x: 680
+      'y': 1456
+      width: 400
+      height: 112
+    style:
+      fontSize: 18
+  - id: tf
+    type: service
+    label: |-
+      /robot_state_publisher
+      URDF + joint_states → TF
+      static_transform_publisher：world→odom
+    bounds:
+      x: 1240
+      'y': 1456
+      width: 420
+      height: 112
+    style:
+      fontSize: 17
+  - id: viz
+    type: service
+    label: |-
+      /algorithm_view → /rviz2
+      地图 · 路径 · 关节 · 识别 · 运控 / 任务 / 决策状态
+    bounds:
+      x: 580
+      'y': 1704
+      width: 600
+      height: 88
+    style:
+      fontSize: 20
+  - id: boundary
+    type: text
+    label: |-
+      边界：语音为离线 WAV 工具；物理抓放使用仿真目标真值；VLM 为受限提案与反馈复核。
+      本图突出主要闭环；其余 TF、传感器及状态订阅见实测 rqt_graph 与接口清单。
+    bounds:
+      x: 100
+      'y': 1816
+      width: 1560
+      height: 72
+    style:
+      fontSize: 19
+edges:
+  - from: brain
+    to: model
+    type: primary
+    label: HTTP 请求 / 模型提案
+  - from: brain
+    to: mission
+    type: primary
+    label: 显式计划 · Service
+  - from: brain
+    to: skills
+    type: primary
+    label: RobotSkill · Action
+    labelOffset:
+      x: -120
+      'y': 0
+  - from: mission
+    to: skills
+    type: primary
+    label: 顺序执行 / 结果
+    waypoints:
+      - x: 1430
+        'y': 464
+  - from: skills
+    to: nav
+    type: primary
+    label: NavigateToPose
+    waypoints:
+      - x: 350
+        'y': 464
+    labelOffset:
+      x: 0
+      'y': 25
+  - from: skills
+    to: moveit
+    type: primary
+    label: 规划 Service / 执行 Action
+    labelOffset:
+      x: -140
+      'y': 0
+  - from: skills
+    to: visual
+    type: primary
+    label: VisualAlign
+    waypoints:
+      - x: 1170
+        'y': 568
+      - x: 1430
+        'y': 568
+  - from: nav
+    to: mux
+    type: primary
+    label: /cmd_vel_nav
+    labelOffset:
+      x: -85
+      'y': 0
+  - from: mux
+    to: sim
+    type: primary
+    label: /cmd_vel
+    waypoints:
+      - x: 350
+        'y': 1224
+  - from: moveit
+    to: sim
+    type: primary
+    label: FollowJointTrajectory
+    labelOffset:
+      x: -130
+      'y': 0
+  - from: visual
+    to: servo
+    type: primary
+    label: delta_twist_cmds
+    labelOffset:
+      x: 105
+      'y': 0
+  - from: servo
+    to: sim
+    type: primary
+    label: servo_joint_trajectory
+    waypoints:
+      - x: 1430
+        'y': 1224
+  - from: skills
+    to: sim
+    type: primary
+    label: 物理抓放 Service
+    waypoints:
+      - x: 1110
+        'y': 540
+      - x: 1110
+        'y': 1080
+      - x: 1020
+        'y': 1080
+    labelOffset:
+      x: 0
+      'y': 30
+  - from: sim
+    to: brain
+    type: data
+    label: 图像 / odom / RL / 抓放反馈
+    waypoints:
+      - x: 1710
+        'y': 1352
+      - x: 1710
+        'y': 136
+      - x: 880
+        'y': 136
+    labelOffset:
+      x: -160
+      'y': 0
+  - from: sim
+    to: mapper
+    type: data
+    label: scan / 点云 / RGB-D / odom
+    waypoints:
+      - x: 350
+        'y': 1376
+  - from: sim
+    to: perception
+    type: data
+    label: RGB / depth / camera_info
+    labelOffset:
+      x: 145
+      'y': 0
+  - from: sim
+    to: tf
+    type: data
+    label: /joint_states
+    waypoints:
+      - x: 1450
+        'y': 1376
+  - from: mapper
+    to: nav
+    type: data
+    label: /map
+    waypoints:
+      - x: 64
+        'y': 1512
+      - x: 64
+        'y': 732
+    labelOffset:
+      x: 0
+      'y': 0
+  - from: mapper
+    to: viz
+    type: data
+    label: 栅格 / 彩色点云
+    waypoints:
+      - x: 350
+        'y': 1748
+  - from: perception
+    to: viz
+    type: data
+    label: 标签 / markers / 图像
+    labelOffset:
+      x: -125
+      'y': 0
+  - from: tf
+    to: viz
+    type: data
+    label: /tf · /tf_static
+    waypoints:
+      - x: 1450
+        'y': 1748
+modules: []

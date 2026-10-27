@@ -27,7 +27,7 @@ for elem in tree.findall('.//asset/*'):
     else:raise AssertionError('Unexpected model dependency: '+name)
     assert path.is_file();elem.set('file',str(path));assets.append(str(path))
 restored=mujoco.MjModel.from_xml_string(ET.tostring(tree,encoding='unicode'))
-signature=robot_physics_signature(restored)
+signature=robot_physics_signature(restored,version=1) # v0.2.0 archive used the original signature format.
 assert signature=='62998c467a2c0d05ace56274e4b7349a7e39dffbdaaeb1baa569a1158f161f98',signature
 options=ort.SessionOptions();options.intra_op_num_threads=1;options.inter_op_num_threads=1
 session=ort.InferenceSession(str(actor),sess_options=options,providers=['CPUExecutionProvider'])

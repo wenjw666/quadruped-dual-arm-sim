@@ -1,0 +1,251 @@
+{
+  "version": 1,
+  "title": "MuJoCo 主仿真 ROS 2 网络",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "vertical",
+  "counts": {
+    "nodes": 17,
+    "edges": 21,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "title",
+      "label": "当前 ROS 2 主链路｜B2 + 双 Aubo · MuJoCo",
+      "type": "text"
+    },
+    {
+      "id": "subtitle",
+      "label": "ROS 2 Humble · Domain 8｜实线：调用 / 控制　虚线：观测 / 反馈｜方框可含同组多个真实节点",
+      "type": "text"
+    },
+    {
+      "id": "model",
+      "label": "llama-server / SmolVLM\n外部 HTTP 进程 · 非 ROS 节点",
+      "type": "service"
+    },
+    {
+      "id": "brain",
+      "label": "/local_brain\n输入理解 · 提案审查 · 反馈复核\n入口 /brain/request",
+      "type": "service"
+    },
+    {
+      "id": "mission",
+      "label": "/mission_coordinator\n显式多步骤计划 · 顺序与重试\n/mission/request",
+      "type": "service"
+    },
+    {
+      "id": "skills",
+      "label": "/robot_skill_server\n导航 / 物理抓放 / 对准 / 回位\n/robot_skill · Action",
+      "type": "service"
+    },
+    {
+      "id": "nav",
+      "label": "Nav2 节点组\n/bt_navigator → /planner_server\n/controller_server · /behavior_server\n局部 / 全局 costmap · lifecycle manager",
+      "type": "service"
+    },
+    {
+      "id": "moveit",
+      "label": "/move_group\nOMPL 规划 · 轨迹执行\n规划场景 / 碰撞检查",
+      "type": "service"
+    },
+    {
+      "id": "visual",
+      "label": "/visual_servo\n腕部图像 → ArUco / PnP / IBVS\n/visual_align · Action",
+      "type": "service"
+    },
+    {
+      "id": "mux",
+      "label": "/qda_command_mux\nnav / task / manual 租约仲裁\n唯一 /cmd_vel 出口",
+      "type": "service"
+    },
+    {
+      "id": "servo",
+      "label": "/servo_left · /servo_right\nMoveIt Servo\n末端速度 → 关节轨迹",
+      "type": "service"
+    },
+    {
+      "id": "sim",
+      "label": "/qda_mujoco\n内部：B2 ONNX + PD 运控 + MuJoCo 动力学\n内部：接触抓放状态机 · 相机 / 激光 / IMU\n轨迹 Action · Servo · /manipulation/command",
+      "type": "service"
+    },
+    {
+      "id": "mapper",
+      "label": "/qda_mapper\n激光栅格 / RGB-D 彩色点云\n真值位姿配准（不是独立 SLAM）",
+      "type": "service"
+    },
+    {
+      "id": "perception",
+      "label": "/qda_perception\nRGB-D 检测 · 标签 · 目标位姿\n/qda_frame_dump：画面保存",
+      "type": "service"
+    },
+    {
+      "id": "tf",
+      "label": "/robot_state_publisher\nURDF + joint_states → TF\nstatic_transform_publisher：world→odom",
+      "type": "service"
+    },
+    {
+      "id": "viz",
+      "label": "/algorithm_view → /rviz2\n地图 · 路径 · 关节 · 识别 · 运控 / 任务 / 决策状态",
+      "type": "service"
+    },
+    {
+      "id": "boundary",
+      "label": "边界：语音为离线 WAV 工具；物理抓放使用仿真目标真值；VLM 为受限提案与反馈复核。\n本图突出主要闭环；其余 TF、传感器及状态订阅见实测 rqt_graph 与接口清单。",
+      "type": "text"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "brain",
+      "to": "model",
+      "type": "primary",
+      "label": "HTTP 请求 / 模型提案"
+    },
+    {
+      "id": "edge-2",
+      "from": "brain",
+      "to": "mission",
+      "type": "primary",
+      "label": "显式计划 · Service"
+    },
+    {
+      "id": "edge-3",
+      "from": "brain",
+      "to": "skills",
+      "type": "primary",
+      "label": "RobotSkill · Action"
+    },
+    {
+      "id": "edge-4",
+      "from": "mission",
+      "to": "skills",
+      "type": "primary",
+      "label": "顺序执行 / 结果"
+    },
+    {
+      "id": "edge-5",
+      "from": "skills",
+      "to": "nav",
+      "type": "primary",
+      "label": "NavigateToPose"
+    },
+    {
+      "id": "edge-6",
+      "from": "skills",
+      "to": "moveit",
+      "type": "primary",
+      "label": "规划 Service / 执行 Action"
+    },
+    {
+      "id": "edge-7",
+      "from": "skills",
+      "to": "visual",
+      "type": "primary",
+      "label": "VisualAlign"
+    },
+    {
+      "id": "edge-8",
+      "from": "nav",
+      "to": "mux",
+      "type": "primary",
+      "label": "/cmd_vel_nav"
+    },
+    {
+      "id": "edge-9",
+      "from": "mux",
+      "to": "sim",
+      "type": "primary",
+      "label": "/cmd_vel"
+    },
+    {
+      "id": "edge-10",
+      "from": "moveit",
+      "to": "sim",
+      "type": "primary",
+      "label": "FollowJointTrajectory"
+    },
+    {
+      "id": "edge-11",
+      "from": "visual",
+      "to": "servo",
+      "type": "primary",
+      "label": "delta_twist_cmds"
+    },
+    {
+      "id": "edge-12",
+      "from": "servo",
+      "to": "sim",
+      "type": "primary",
+      "label": "servo_joint_trajectory"
+    },
+    {
+      "id": "edge-13",
+      "from": "skills",
+      "to": "sim",
+      "type": "primary",
+      "label": "物理抓放 Service"
+    },
+    {
+      "id": "edge-14",
+      "from": "sim",
+      "to": "brain",
+      "type": "data",
+      "label": "图像 / odom / RL / 抓放反馈"
+    },
+    {
+      "id": "edge-15",
+      "from": "sim",
+      "to": "mapper",
+      "type": "data",
+      "label": "scan / 点云 / RGB-D / odom"
+    },
+    {
+      "id": "edge-16",
+      "from": "sim",
+      "to": "perception",
+      "type": "data",
+      "label": "RGB / depth / camera_info"
+    },
+    {
+      "id": "edge-17",
+      "from": "sim",
+      "to": "tf",
+      "type": "data",
+      "label": "/joint_states"
+    },
+    {
+      "id": "edge-18",
+      "from": "mapper",
+      "to": "nav",
+      "type": "data",
+      "label": "/map"
+    },
+    {
+      "id": "edge-19",
+      "from": "mapper",
+      "to": "viz",
+      "type": "data",
+      "label": "栅格 / 彩色点云"
+    },
+    {
+      "id": "edge-20",
+      "from": "perception",
+      "to": "viz",
+      "type": "data",
+      "label": "标签 / markers / 图像"
+    },
+    {
+      "id": "edge-21",
+      "from": "tf",
+      "to": "viz",
+      "type": "data",
+      "label": "/tf · /tf_static"
+    }
+  ],
+  "modules": []
+}

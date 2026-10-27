@@ -29,10 +29,21 @@ class SkillServer(Node):
         self.journal=Journal(self.declare_parameter('journal_path','/ws/output/v2_brain/tasks.sqlite').value)
         self.navigation_frame=self.declare_parameter('navigation_frame','odom').value
         self.visual_skill_timeout=self.declare_parameter('visual_skill_timeout',360.).value
+        self.navigation_timeout=self.declare_parameter('navigation_timeout',600.).value
         self.active=None;self.child=None;self.stop=False;self.cancelled_ids=set();self.state={};self.state_at=0.;self.stable=0
         self.stable_since_sim=None
         self.lease_token=None;self.lease_pending=None;self.stop_reason='CANCELLED';self.quarantine=''
         self.lease_pending_at=0.;self.session=None
+        self.manip_state={};self.manip_at=0.;self.manip_token=None;self.manip_renew=None
+        self.odom=None;self.odom_at=0.
+        from nav_msgs.msg import Odometry
+        from geometry_msgs.msg import Twist
+        self.task_cmd=self.create_publisher(Twist,'/cmd_vel_task',10)
+        from geometry_msgs.msg import Polygon
+        self.footprint_pubs=[self.create_publisher(Polygon,'/'+name+'/footprint',10) for name in ('local_costmap','global_costmap')]
+        self.manip=self.create_client(BrainRequest,'/manipulation/command',callback_group=self.group)
+        self.create_subscription(String,'/manipulation/status',self.on_manipulation,10,callback_group=self.group)
+        self.create_subscription(Odometry,'/odom',self.on_odom,10,callback_group=self.group)
         self.lease=self.create_client(BrainRequest,'/motion/lease',callback_group=self.group)
         self.hold=self.create_client(SetBool,'/motion/hold',callback_group=self.group)
         self.nav=ActionClient(self,NavigateToPose,'/navigate_to_pose',callback_group=self.group)
@@ -51,10 +62,19 @@ class SkillServer(Node):
         rows=self.journal.get();latest=rows[0] if rows else {}
         self.status_pub.publish(String(data=json.dumps({'active':self.active,'scene_version':SCENE_VERSION,
             'last_skill':latest.get('goal',{}).get('skill','none'),'last_status':latest.get('status','idle'),
-            'last_error':latest.get('result',{}).get('error_code',''),'physical_grasp_ready':False,
+            'last_error':latest.get('result',{}).get('error_code',''),'physical_grasp_ready':self.physical_ready(),
             'quarantine':self.quarantine,'base_lease_owned':bool(self.lease_token)})))
 
     def renew_lease(self):
+        if self.manip_token and self.manip_renew is None:
+            token=self.manip_token
+            self.manip_renew=self.manip.call_async(BrainRequest.Request(request_json=json.dumps({'op':'renew','token':token})))
+            def renewed(f):
+                self.manip_renew=None
+                try:ok=json.loads(f.result().response_json).get('ok')
+                except Exception:ok=False
+                if token==self.manip_token and not ok:self.stop=True;self.stop_reason='MANIPULATION_LEASE_LOST'
+            self.manip_renew.add_done_callback(renewed)
         with self.lock:
             if self.session and time.monotonic()>self.session['expires_at']:
                 self.session=None;self.quarantine='MISSION_SESSION_EXPIRED';self.stop=True;self.stop_reason=self.quarantine
@@ -89,6 +109,107 @@ class SkillServer(Node):
         else:self.stable_since_sim=None
         self.stable=self.stable+1 if stable else 0;self.state=state;self.state_at=time.monotonic()
 
+    def on_odom(self,msg):self.odom=msg.pose.pose;self.odom_at=time.monotonic()
+
+    def on_manipulation(self,msg):
+        try:self.manip_state=json.loads(msg.data);self.manip_at=time.monotonic()
+        except (TypeError,ValueError):return
+        if self.manip_token and self.manip_state.get('error'):
+            self.stop=True;self.stop_reason=self.manip_state['error']
+            if self.child:self.child.cancel_goal_async()
+            if self.hold.service_is_ready():self.hold.call_async(SetBool.Request(data=True))
+
+    def physical_ready(self):
+        return (self.manip.service_is_ready() and self.nav.server_is_ready() and self.lease.service_is_ready()
+                and time.monotonic()-self.manip_at<5 and not self.manip_state.get('error'))
+
+    def carrying_footprint(self,enabled):
+        from geometry_msgs.msg import Polygon,Point32
+        points=[(.95,.60),(.95,-.60),(-.45,-.60),(-.45,.60)] if enabled else [(.42,.55),(.42,-.55),(-.40,-.55),(-.40,.55)]
+        message=Polygon(points=[Point32(x=float(x),y=float(y),z=0.) for x,y in points])
+        for publisher in self.footprint_pubs:publisher.publish(message)
+
+    def manip_request(self,op,deadline,check_stop=True,**kwargs):
+        payload=dict(op=op,**kwargs)
+        if self.manip_token:payload['token']=self.manip_token
+        response=self.wait(self.manip.call_async(BrainRequest.Request(request_json=json.dumps(payload))),deadline,check_stop)
+        value=json.loads(response.response_json)
+        if not value.get('ok'):raise RuntimeError(value.get('error','MANIPULATION_REQUEST_FAILED'))
+        return value
+
+    def navigate_xy(self,x,y,yaw,deadline):
+        self.base_hold(False,deadline)
+        goal=NavigateToPose.Goal();goal.pose.header.frame_id=self.navigation_frame
+        goal.pose.header.stamp=self.get_clock().now().to_msg()
+        goal.pose.pose.position.x=float(x);goal.pose.pose.position.y=float(y)
+        goal.pose.pose.orientation.z=math.sin(yaw/2);goal.pose.pose.orientation.w=math.cos(yaw/2)
+        self.action(self.nav,goal,min(deadline,time.monotonic()+300));self.settle(deadline)
+
+    def precise_dock(self,x,y,yaw,deadline):
+        from geometry_msgs.msg import Twist
+        self.base_hold(True,deadline)
+        result=json.loads(self.wait(self.lease.call_async(BrainRequest.Request(request_json=json.dumps(
+            {'op':'mode','token':self.lease_token,'mode':'task'}))),deadline).response_json)
+        if not result.get('ok'):raise RuntimeError('DOCK_LEASE_REJECTED')
+        until=min(deadline,time.monotonic()+240);stable_since=None
+        try:
+            while time.monotonic()<until:
+                if self.stop:raise RuntimeError(self.stop_reason)
+                if self.odom is None or time.monotonic()-self.odom_at>3:raise RuntimeError('DOCK_ODOMETRY_STALE')
+                p=self.odom;q=p.orientation
+                heading=math.atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z))
+                dx,dy=x-p.position.x,y-p.position.y
+                angular=math.atan2(math.sin(yaw-heading),math.cos(yaw-heading))
+                if math.hypot(dx,dy)<.04 and abs(angular)<.04:
+                    break
+                cmd=Twist();cmd.linear.x=max(-.05,min(.10,.8*(math.cos(heading)*dx+math.sin(heading)*dy)))
+                cmd.linear.y=max(-.07,min(.07,.8*(-math.sin(heading)*dx+math.cos(heading)*dy)))
+                cmd.angular.z=max(-.20,min(.20,angular));self.task_cmd.publish(cmd);time.sleep(.04)
+            else:raise RuntimeError('PRECISE_DOCK_TIMEOUT')
+        finally:
+            self.task_cmd.publish(Twist());self.base_hold(True,min(deadline,time.monotonic()+5))
+        self.settle(deadline)
+
+    def pick_place(self,handle,deadline,report):
+        if not self.physical_ready():raise RuntimeError('PHYSICAL_BACKEND_NOT_READY')
+        if self.manip_state.get('carrying'):raise RuntimeError('EXISTING_PAYLOAD_REQUIRES_RECOVERY')
+        if handle.request.arm!='left':raise RuntimeError('RIGHT_ARM_PHYSICAL_TASK_NOT_VALIDATED')
+        from qda_kinematics.scene import PLACE_MARKER_XYZ, PLACE_YAW, EXPANDED
+        if not EXPANDED:raise RuntimeError('EXPANDED_FACTORY_REQUIRED')
+        if abs(PLACE_YAW)>.01:raise RuntimeError('SIDE_DOCK_PHYSICAL_TASK_NOT_VALIDATED')
+        def feedback(stage,progress):handle.publish_feedback(RobotSkill.Feedback(stage=stage,progress=progress,detail='physical_contact'))
+        report['manipulation']=[];report['pose_source']='MuJoCo simulation truth';report['attachment']='none'
+        self.settle(deadline)
+        if self.odom is None:raise RuntimeError('ODOMETRY_UNAVAILABLE')
+        if math.hypot(self.odom.position.x-.20,self.odom.position.y+.16)>.5:self.navigate_xy(.14,-.16,0.,deadline)
+        feedback('precise_pick_dock',.05);self.precise_dock(.20,-.16,0.,deadline)
+        acquired=self.manip_request('acquire',deadline,arm='left');self.manip_token=acquired['token']
+        def manipulate(op,progress,**kwargs):
+            self.settle(deadline)
+            self.manip_request(op,deadline,**kwargs)
+            phase_deadline=min(deadline,time.monotonic()+600);previous=None
+            while time.monotonic()<phase_deadline:
+                if self.stop:raise RuntimeError(self.stop_reason)
+                s=self.manip_request('status',min(phase_deadline,time.monotonic()+10))
+                if s['stage']!=previous:feedback(s['stage'],progress);previous=s['stage'];report['manipulation'].append(s)
+                if s['error']:raise RuntimeError(s['error'])
+                if s['completed'] and s['operation']==op:return s
+                time.sleep(.2)
+            raise RuntimeError('PHYSICAL_PHASE_TIMEOUT')
+        report['pick']=manipulate('pick',.25)
+        x,y=PLACE_MARKER_XYZ[:2]
+        feedback('undock_with_payload',.35)
+        self.precise_dock(-.10,-1.0,0.,deadline)
+        self.carrying_footprint(True)
+        feedback('carry_south_route',.5)
+        for waypoint in ((.05,-1.9),(3.7,-1.9),(x-1.10,y-1.10)):
+            self.navigate_xy(*waypoint,0.,deadline)
+            if not self.manip_state.get('carrying'):raise RuntimeError('PAYLOAD_LOST')
+        feedback('precise_place_dock',.75);self.precise_dock(x-.64,y-.32,0.,deadline)
+        report['place']=manipulate('place',.85,destination=[float(x),float(y),float(PLACE_MARKER_XYZ[2]+.024)])
+        self.carrying_footprint(False)
+        feedback('placement_verified',1.)
+
     def query(self,request,response):
         try:
             data=json.loads(request.request_json);op=data.get('op','status')
@@ -120,7 +241,9 @@ class SkillServer(Node):
                 'state_age_wall_s':time.monotonic()-self.state_at,
                 'quarantine':self.quarantine,'base_lease_owned':bool(self.lease_token),
                 'mission_owner':self.session['owner'] if self.session else None,
-                'capabilities':{'navigate':True,'home':True,'visual_align':True,'physical_pick_place':False}}
+                'capabilities':{'navigate':True,'home':True,'visual_align':True,'physical_pick_place':self.physical_ready(),
+                    'physical_pick_place_arms':['left'],'physical_pick_place_routes':['south'],
+                    'physical_object_pose_source':'simulation_truth'}}
         except Exception as exc:result={'ok':False,'error':str(exc)}
         response.response_json=json.dumps(result);return response
 
@@ -150,6 +273,7 @@ class SkillServer(Node):
 
     def wait(self,future,deadline,check_stop=True):
         while not future.done():
+            if not rclpy.ok():raise RuntimeError('ROS_SHUTDOWN')
             if check_stop and self.stop:raise RuntimeError(self.stop_reason)
             if time.monotonic()>deadline:raise TimeoutError('DEADLINE_EXCEEDED')
             time.sleep(.02)
@@ -183,6 +307,7 @@ class SkillServer(Node):
         self.base_hold(True,deadline)
         while (self.stable<5 or time.monotonic()-self.state_at>2 or self.stable_since_sim is None
                or self.state.get('physics_time',self.get_clock().now().nanoseconds*1e-9)-self.stable_since_sim<.5):
+            if not rclpy.ok():raise RuntimeError('ROS_SHUTDOWN')
             if self.stop:raise RuntimeError(self.stop_reason)
             if self.state.get('fault'):raise RuntimeError('LOCOMOTION_FAULT')
             if time.monotonic()>deadline:raise TimeoutError('BASE_NOT_STABLE')
@@ -226,13 +351,13 @@ class SkillServer(Node):
             if self.active:
                 handle.abort();return RobotSkill.Result(success=False,error_code='DUPLICATE_RUNNING',report_json='{}')
             self.active=g.task_id;self.stop=handle.is_cancel_requested or g.task_id in self.cancelled_ids;self.stop_reason='CANCELLED';self.journal.update(g.task_id,'RUNNING')
-        deadline=time.monotonic()+(240 if g.skill=='navigate' else self.visual_skill_timeout if g.skill=='visual_align' else 90);report={'task_id':g.task_id,'skill':g.skill}
+        deadline=time.monotonic()+(2400 if g.skill=='pick_place' else self.navigation_timeout if g.skill=='navigate' else self.visual_skill_timeout if g.skill=='visual_align' else 90);report={'task_id':g.task_id,'skill':g.skill}
         try:
             if self.stop:raise RuntimeError('CANCELLED')
             handle.publish_feedback(RobotSkill.Feedback(stage=g.skill,progress=0.,detail='validated'))
             if g.skill=='inspect':report['locomotion']=self.state
             elif g.skill=='pause':self.base_hold(True,deadline)
-            elif g.skill=='pick_place':raise RuntimeError('PHYSICAL_GRASP_NOT_VALIDATED')
+            elif g.skill=='pick_place':self.pick_place(handle,deadline,report)
             elif g.skill=='navigate':
                 if not self.state.get('ready') or self.state.get('fault') or time.monotonic()-self.state_at>2:raise RuntimeError('LOCOMOTION_NOT_READY')
                 self.base_hold(False,deadline)
@@ -240,7 +365,30 @@ class SkillServer(Node):
                 goal.pose.header.frame_id=self.navigation_frame;goal.pose.header.stamp=self.get_clock().now().to_msg()
                 goal.pose.pose.position.x=float(x);goal.pose.pose.position.y=float(y)
                 goal.pose.pose.orientation.z=math.sin(yaw/2);goal.pose.pose.orientation.w=math.cos(yaw/2)
-                self.action(self.nav,goal,deadline);self.settle(deadline)
+                # Nav2's goal-check event precedes the RL body's final settling.
+                # Recheck the stopped pose and, if needed, request another Nav2
+                # approach with collision checking still enabled.
+                offset=[0.,0.,0.]
+                for attempt in range(4):
+                    goal.pose.pose.position.x=float(x+offset[0]);goal.pose.pose.position.y=float(y+offset[1])
+                    goal.pose.pose.orientation.z=math.sin((yaw+offset[2])/2);goal.pose.pose.orientation.w=math.cos((yaw+offset[2])/2)
+                    self.base_hold(False,deadline)
+                    self.action(self.nav,goal,deadline);self.settle(deadline)
+                    if self.odom is None or time.monotonic()-self.odom_at>2:raise RuntimeError('ARRIVAL_ODOMETRY_STALE')
+                    p=self.odom;q=p.orientation
+                    heading=math.atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z))
+                    distance=math.hypot(p.position.x-x,p.position.y-y)
+                    angle=abs(math.atan2(math.sin(heading-yaw),math.cos(heading-yaw)))
+                    report['arrival']=dict(target=[x,y,yaw],actual=[p.position.x,p.position.y,heading],xy_error_m=distance,yaw_error_rad=angle,attempts=attempt+1,nav_goal_compensation=offset.copy())
+                    if distance<.12 and angle<.18:break
+                    handle.publish_feedback(RobotSkill.Feedback(stage='arrival_correction',progress=.95,detail=json.dumps(report['arrival'])))
+                    # The walking-to-standing transition can recoil ~8 cm. A
+                    # bounded measured endpoint correction avoids repeating
+                    # the same early-stop endpoint. Nav2 checks every new goal.
+                    offset[0]=max(-.30,min(.30,offset[0]+x-p.position.x))
+                    offset[1]=max(-.30,min(.30,offset[1]+y-p.position.y))
+                    offset[2]=max(-.20,min(.20,offset[2]+math.atan2(math.sin(yaw-heading),math.cos(yaw-heading))))
+                else:raise RuntimeError('SETTLED_ARRIVAL_OUTSIDE_TOLERANCE')
             elif g.skill in ('home','visual_align'):
                 self.settle(deadline)
                 if not self.plan.wait_for_service(timeout_sec=3):raise RuntimeError('MOVEIT_UNAVAILABLE')
@@ -266,6 +414,13 @@ class SkillServer(Node):
             if self.hold.service_is_ready():self.hold.call_async(SetBool.Request(data=True))
             report.update(success=False,error_code=str(exc));status='CANCELLED' if self.stop else 'FAILED'
         finally:
+            if self.manip_token:
+                try:
+                    current=self.manip_request('status',time.monotonic()+10,check_stop=False)
+                    if current.get('active'):self.manip_request('cancel',time.monotonic()+10,check_stop=False)
+                    self.manip_request('release',time.monotonic()+10,check_stop=False)
+                except Exception:self.quarantine='MANIPULATION_STOP_UNCONFIRMED'
+                self.manip_token=None
             if self.lease_token and not self.quarantine:
                 with self.lock:token=self.lease_token;self.lease_token=None
                 try:

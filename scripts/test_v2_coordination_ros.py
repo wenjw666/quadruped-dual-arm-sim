@@ -44,7 +44,7 @@ def main():
         skills=[step('navigate',target='start')]
         skills+=([step('home','left'),step('home','right')] if args.preset=='handoff' else [step('visual_align','left'),step('visual_align','right')])
         skills+=[step('inspect')];plan=dict(scene_version=SCENE_VERSION,steps=skills)
-        bad={**plan,'steps':[step('inspect'),dict(skill='pick_place',object_id='red_cube',target_id='place_station',arm='left')]}
+        bad={**plan,'steps':[step('inspect'),dict(skill='pause',object_id='none',target_id='none',arm='none')]}
         assert not call(dict(op='mission_submit',mission_id=mid+'-bad',plan=bad))['ok']
         report['preflight_rejects_unavailable_step']=True
         assert call(dict(op='mission_submit',mission_id=mid,plan=plan))['accepted']

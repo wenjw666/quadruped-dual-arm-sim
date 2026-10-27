@@ -7,6 +7,7 @@ intensity, time and ring, so this node republishes /fast_livo/velodyne.
 from __future__ import annotations
 
 import math
+import json
 
 import numpy as np
 import rclpy
@@ -17,6 +18,9 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profi
 from sensor_msgs.msg import LaserScan, PointCloud2, PointField
 from sensor_msgs_py import point_cloud2
 from tf2_ros import Buffer, StaticTransformBroadcaster, TransformListener
+from std_msgs.msg import Header, String
+from std_srvs.srv import Trigger
+from .color_map import ColorMap
 
 
 class MapperNode(Node):
@@ -31,6 +35,8 @@ class MapperNode(Node):
         self.obstacle_z = (0.08, 0.62)
         self.grid = np.full((self.height, self.width), -1, dtype=np.int8)
         self.clouds = []
+        self.color_map=ColorMap()
+        self.color_output=self.declare_parameter('color_output','/ws/output/mapping').value
         self.livo_locked = False
         self.odom_pose = None
         self.livo_pose = None
@@ -52,6 +58,11 @@ class MapperNode(Node):
         self.map_pub = self.create_publisher(OccupancyGrid, "/map", map_qos)
         self.cloud_pub = self.create_publisher(PointCloud2, "/mapping/cloud", 1)
         self.color_pub = self.create_publisher(PointCloud2, "/mapping/colored", 2)
+        self.global_color_pub=self.create_publisher(PointCloud2,'/mapping/colored_global',map_qos)
+        self.color_status=self.create_publisher(String,'/mapping/color_status',map_qos)
+        self.create_subscription(PointCloud2,'/mapping/rgbd_observation',self._rgbd,10)
+        self.create_service(Trigger,'/mapping/save_color',self._save_color)
+        self.create_timer(2.,self._publish_color)
         self.velo_pub = self.create_publisher(PointCloud2, "/fast_livo/velodyne", 1)
         self.create_timer(0.5, self._publish_map)
         if self.publish_velodyne:
@@ -60,6 +71,30 @@ class MapperNode(Node):
             self.get_logger().info(
                 f"栅格 /map 已启动；Mid-360 点云 {cloud_topic}，高度 {self.obstacle_z[0]:.2f}-{self.obstacle_z[1]:.2f} m 写入障碍"
             )
+
+    def _rgbd(self,msg):
+        if (msg.header.frame_id!='odom' or msg.is_bigendian or msg.point_step!=16
+            or len(msg.data)!=msg.width*msg.height*16
+            or [(f.name,f.offset,f.datatype) for f in msg.fields]!=[(k,4*i,PointField.FLOAT32) for i,k in enumerate(('x','y','z','rgb'))]):return
+        a=np.frombuffer(msg.data,dtype='<f4').reshape(-1,4)
+        packed=a[:,3].copy().view(np.uint32)
+        rgb=np.column_stack(((packed>>16)&255,(packed>>8)&255,packed&255))
+        self.color_map.add(a[:,:3],rgb)
+
+    def _publish_color(self):
+        if not self.color_map.cells:return
+        xyz,rgb=self.color_map.arrays()
+        bits=(rgb[:,0].astype(np.uint32)<<16)|(rgb[:,1].astype(np.uint32)<<8)|rgb[:,2].astype(np.uint32)
+        points=np.column_stack((xyz,bits.view(np.float32))).astype('<f4')
+        msg=PointCloud2(header=Header(stamp=self.get_clock().now().to_msg(),frame_id='odom'),
+            height=1,width=len(points),fields=_rgb_fields(),is_bigendian=False,point_step=16,row_step=len(points)*16,is_dense=True,data=points.tobytes())
+        self.global_color_pub.publish(msg)
+        self.color_status.publish(String(data=json.dumps(dict(points=len(xyz),frames=self.color_map.frames,registration='simulation_truth_RGBD'))))
+
+    def _save_color(self,request,response):
+        try:response.message=json.dumps(self.color_map.save(self.color_output));response.success=True
+        except Exception as exc:response.message=str(exc);response.success=False
+        return response
 
     def _cell(self, x: float, y: float):
         col = int((x - self.origin[0]) / self.resolution)

@@ -32,4 +32,7 @@ from qda_locomotion.upstream_b2 import EXPECTED
 for name in ('base.yaml','config.yaml'):
     if hashlib.sha256((base/'upstream_b2'/name).read_bytes()).hexdigest()!=EXPECTED[name]:
         raise SystemExit('B2 upstream configuration checksum mismatch: '+name)
-print('V2 experimental scene assets verified; task deployment acceptance remains false.')
+import yaml
+config=Path(__file__).resolve().parents[1]/'src/qda_bringup/config/nav2_quad.yaml'
+yaml.safe_load(config.read_text())
+print('V2 assets and Nav2 configuration verified. RL actor remains experimental; physical-task acceptance is recorded separately.')
