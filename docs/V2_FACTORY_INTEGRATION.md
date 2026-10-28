@@ -40,11 +40,11 @@
 当前本机资产已准备好，Windows 项目目录运行：
 
 ```powershell
-.\run_sim.ps1 -Background
+.\scripts\windows\run_sim.ps1 -Background
 # 带 MuJoCo、RViz，默认不自动取放；RViz 的 2D Goal Pose 可发送导航目标
-.\stop_sim.ps1
-.\run_sim.ps1 -MotionMode kinematic -Scenario north -Background  # V1 对照
-.\run_sim.ps1 -Backend gazebo -Scenario north -Background      # Gazebo 对照
+.\scripts\windows\stop_sim.ps1
+.\scripts\windows\run_sim.ps1 -MotionMode kinematic -Scenario north -Background  # V1 对照
+.\scripts\windows\run_sim.ps1 -Backend gazebo -Scenario north -Background      # Gazebo 对照
 ```
 
 各模式不能同时占用同一个 ROS domain：MuJoCo 为 8，Gazebo 为 7。可使用 `-Headless`、`-NoRviz`、`-Manual`。`-VirtualGraspComparison` 明确启用旧虚拟抓取并允许旧任务启动，但该组合尚未做完整取放验证。`run_scenarios.ps1` 的既有成绩仍是 V1 运动学对照。

@@ -62,7 +62,7 @@ python3 scripts/release_runtime.py install \
 Windows 启动：
 
 ```powershell
-.\start_brain.ps1 -WithSimulation -ServoFixture -NoPhysicsGui
+.\scripts\windows\start_brain.ps1 -WithSimulation -ServoFixture -NoPhysicsGui
 ```
 
 避免在运行运动任务时同时进行视频最终渲染、大规模构建或高负载训练。本版本可视化不保证实时帧率。暂停/过期会停止，任务不会自动重做运动步骤。

@@ -3,3 +3,7 @@ trimesh==5.2.0
 pycollada==0.9.3
 glfw==2.11.0
 PyOpenGL==3.1.10
+# MuJoCo's scene controller constructs the Gym environment and ONNX policy at startup.
+gymnasium==1.2.2
+onnxruntime==1.23.2
+protobuf==6.33.0

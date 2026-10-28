@@ -5,15 +5,15 @@ This task uses the existing B2, dual Aubo arms, Robotiq 2F-85 grippers and expan
 ## Run
 
 ```powershell
-.\run_sim.ps1 -Brain -Manual -Background
-.\run_pick_place.ps1
+.\scripts\windows\run_sim.ps1 -Brain -Manual -Background
+.\scripts\windows\run_pick_place.ps1
 ```
 
 For ROS integration checks on a machine using software OpenGL:
 
 ```powershell
-.\run_sim.ps1 -Brain -Manual -Background -NoPhysicsGui -NoRviz
-.\run_pick_place.ps1 -FastValidation
+.\scripts\windows\run_sim.ps1 -Brain -Manual -Background -NoPhysicsGui -NoRviz
+.\scripts\windows\run_pick_place.ps1 -FastValidation
 ```
 
 `FastValidation` temporarily disables image rendering and restores it afterwards. Physics, lidar, Nav2, ownership, manipulation and brain services continue running. This task currently uses simulation truth for object pose and odometry; it is not a demonstration of vision-only grasp acquisition. Ordinary visual servoing still has its separate image-based workflow.
@@ -100,7 +100,7 @@ The inspected recording is `output/grasp/physical-pick-carry-place-validated.mp4
 For another complete demonstration after a successful placement, restart the simulation episode so the free cube begins on the pick table again:
 
 ```powershell
-.\stop_sim.ps1 -Backend mujoco
-.\run_sim.ps1 -Brain -Manual -Background
-.\run_pick_place.ps1 -FastValidation
+.\scripts\windows\stop_sim.ps1 -Backend mujoco
+.\scripts\windows\run_sim.ps1 -Brain -Manual -Background
+.\scripts\windows\run_pick_place.ps1 -FastValidation
 ```

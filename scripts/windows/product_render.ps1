@@ -1,10 +1,10 @@
-# Run after prepare.py and the model / RViz clips have been produced.
+﻿# Run after prepare.py and the model / RViz clips have been produced.
 $ErrorActionPreference = 'Stop'
-Push-Location $PSScriptRoot
+Push-Location (Join-Path $PSScriptRoot '../../media/product-demo')
 $priorTemp = $env:TEMP
 $priorTmp = $env:TMP
 try {
-    $renderTemp = Join-Path $PSScriptRoot '../../output/video_tmp'
+    $renderTemp = Join-Path (Join-Path $PSScriptRoot '../../media/product-demo') '../../output/video_tmp'
     New-Item -ItemType Directory -Force $renderTemp | Out-Null
     $env:TEMP = [System.IO.Path]::GetFullPath($renderTemp)
     $env:TMP = $env:TEMP

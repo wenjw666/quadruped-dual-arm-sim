@@ -27,3 +27,6 @@ media/product-demo/qc/stills/
 media/product-demo/qc/*.jpg
 media/product-demo/qc/*.png
 media/product-demo/qc/*.log
+
+# Locally exported Docker images
+*.tar

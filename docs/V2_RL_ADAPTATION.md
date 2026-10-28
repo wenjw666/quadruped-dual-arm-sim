@@ -52,7 +52,7 @@
 
 ## 复现入口
 
-Windows 项目目录中运行 `./run_v2_rl_bench.ps1 -Seconds 30`，使用本轮原版等价 ONNX 与校准表；默认零速，30 秒后退出。另一个容器终端可持续发布速度指令：
+Windows 项目目录中运行 `./scripts/windows/run_v2_rl_bench.ps1 -Seconds 30`，使用本轮原版等价 ONNX 与校准表；默认零速，30 秒后退出。另一个容器终端可持续发布速度指令：
 
 ```bash
 source /opt/ros/humble/setup.bash

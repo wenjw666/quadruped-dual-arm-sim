@@ -5,12 +5,12 @@
 
 ## 本机重建
 
-1. 在项目根目录运行 `media/product-demo/narrate.ps1`，使用已安装的中文 Windows SAPI 合成旁白。
+1. 在项目根目录运行 `scripts/windows/product_narrate.ps1`，使用已安装的中文 Windows SAPI 合成旁白。
 2. 用 `scripts/record_product_demo.py` 只读录制新的任务；分别保存测试报告，不覆盖历史证据。
 3. 执行 `python media/product-demo/prepare.py --take take02`。脚本要求同名报告真实通过，导入相机画面和数据。
 4. 在容器内 source ROS 工作区后运行 `scripts/render_product_robot.py --out /ws/media/product-demo/public`；用 `--events` 可生成明确标注的实测姿态重放。
 5. 使用真实 RViz 窗口录制 `public/rviz.mp4`；不把信息图当成运行界面。
-6. `npm ci`，然后运行 `render.ps1`。它将素材确定性采样为 15 fps 图像序列，再渲染 30 fps 成片并规范化旁白响度。生成帧序列后也可用 `npm run studio`。
+6. `npm ci`，然后运行 `scripts/windows/product_render.ps1`。它将素材确定性采样为 15 fps 图像序列，再渲染 30 fps 成片并规范化旁白响度。生成帧序列后也可用 `npm run studio`。
 
 `public/`、原始 take 与 `output/` 不在源码中。需要保留同轮素材包才能复刻完全相同的成片。
 视频不读取网络数据，不改变仿真。原始运行、素材合成和最终渲染分阶段进行，避免争抢控制资源。

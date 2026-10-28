@@ -1,4 +1,4 @@
-﻿# Gazebo / MuJoCo 双后端与 RViz
+# Gazebo / MuJoCo 双后端与 RViz
 
 当前默认主后端已切换为 **MuJoCo**，采用精修机器人与扩展工厂。路线/工位选择、验收记录和批量执行入口见 [EXPANDED_DEMO.md](EXPANDED_DEMO.md)。以下双后端机制仍适用；文末旧场景数据保留为历史记录。
 
@@ -7,17 +7,17 @@
 工作目录：`D:\20261022ubunturos_win`。容器为 `qda-dev`，VcXsrv 沿用本机现有配置。
 
 ```powershell
-.\run_sim.ps1 -Backend gazebo
-.\run_sim.ps1 -Backend mujoco
+.\scripts\windows\run_sim.ps1 -Backend gazebo
+.\scripts\windows\run_sim.ps1 -Backend mujoco
 # 同时启动两个后端，各自带一个 RViz；已运行的后端自动跳过
-.\run_compare.ps1
+.\scripts\windows\run_compare.ps1
 # 只重开 RViz，不重置正在运行的仿真
-.\show_rviz.ps1 -Backend gazebo
-.\show_rviz.ps1 -Backend mujoco
+.\scripts\windows\show_rviz.ps1 -Backend gazebo
+.\scripts\windows\show_rviz.ps1 -Backend mujoco
 # 结束指定后端；不关闭 Docker
-.\stop_sim.ps1 -Backend gazebo
-.\stop_sim.ps1 -Backend mujoco
-.\stop_sim.ps1 -Backend all
+.\scripts\windows\stop_sim.ps1 -Backend gazebo
+.\scripts\windows\stop_sim.ps1 -Backend mujoco
+.\scripts\windows\stop_sim.ps1 -Backend all
 ```
 
 `run_sim.ps1` 默认打开后端 GUI 与 RViz，并执行一次抓取—导航—放置任务。`-Headless` 关闭两个 GUI；`-NoRviz` 仅关闭 RViz；`-Manual` 不自动执行任务；`-Background` 后台运行并把启动日志保存到 `output/*_session.log`。旧的 `-Rviz` 参数仍可使用。

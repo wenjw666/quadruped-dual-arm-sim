@@ -31,9 +31,9 @@ RViz 的 `Accumulated RGB-D map / simulation-truth registration` 显示 `/mappin
 ## 复现
 
 ```powershell
-.\stop_sim.ps1 -Backend mujoco
-.\run_sim.ps1 -Brain -Manual -Background -Mapping -NoPhysicsGui -NoRviz
-.\run_navigation_demo.ps1 -Mode perimeter -Take clean
+.\scripts\windows\stop_sim.ps1 -Backend mujoco
+.\scripts\windows\run_sim.ps1 -Brain -Manual -Background -Mapping -NoPhysicsGui -NoRviz
+.\scripts\windows\run_navigation_demo.ps1 -Mode perimeter -Take clean
 ```
 
 运行前应从新仿真回合开始；脚本会启用观察相机、RGB-D 累积和内侧跟拍视角。`-Mode destinations` 会使用检查点、南北入口和东侧不同朝向的目标集合。

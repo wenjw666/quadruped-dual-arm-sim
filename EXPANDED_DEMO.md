@@ -6,18 +6,18 @@
 
 ```powershell
 # 默认：MuJoCo、自动选路、GUI + RViz、执行一次完整任务
-.\run_sim.ps1
+.\scripts\windows\run_sim.ps1
 # 若同一后端已经运行，先停止再切换配置
-.\stop_sim.ps1
-.\run_sim.ps1 -Scenario north
-.\run_sim.ps1 -Scenario south
-.\run_sim.ps1 -Scenario side
+.\scripts\windows\stop_sim.ps1
+.\scripts\windows\run_sim.ps1 -Scenario north
+.\scripts\windows\run_sim.ps1 -Scenario south
+.\scripts\windows\run_sim.ps1 -Scenario side
 # 静止检查场景，不启动任务
-.\run_sim.ps1 -Scenario auto -Manual
+.\scripts\windows\run_sim.ps1 -Scenario auto -Manual
 # 保留旧小场景作为回归基线
-.\run_sim.ps1 -Scenario legacy
+.\scripts\windows\run_sim.ps1 -Scenario legacy
 # 同配置的 Gazebo 对照
-.\run_sim.ps1 -Backend gazebo -Scenario side
+.\scripts\windows\run_sim.ps1 -Backend gazebo -Scenario side
 ```
 
 `-Background` 后台启动，`-Headless` 关闭仿真 GUI 与 RViz，`-NoRviz` 只关闭 RViz。`show_rviz.ps1`、`stop_sim.ps1` 的默认后端也改为 MuJoCo。运行中的同后端不会被启动命令静默覆盖。
@@ -44,10 +44,10 @@ RViz 增加南北路线选项、选中检查点、目标基座朝向箭头、场
 
 ```powershell
 # 串行执行真实仿真，不并行争抢本机算力；运行前先停止 MuJoCo
-.\stop_sim.ps1
-.\run_scenarios.ps1
+.\scripts\windows\stop_sim.ps1
+.\scripts\windows\run_scenarios.ps1
 # 正式重复测试的入口；本轮演示成功不等于统计成功率
-.\run_scenarios.ps1 -Scenarios north,south -Repeat 3
+.\scripts\windows\run_scenarios.ps1 -Scenarios north,south -Repeat 3
 ```
 
 每次任务保存在 `output/mujoco/runs/<日本时间戳>_<场景>_<唯一编号>/`，失败记录不会被下一次运行覆盖：

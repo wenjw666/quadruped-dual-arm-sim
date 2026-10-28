@@ -43,9 +43,9 @@ Windows 项目目录：
 
 ```powershell
 # MuJoCo 物理在后台，RViz 显示算法与机器人，保留较多 CPU 余量
-.\start_brain.ps1 -WithSimulation -ServoFixture -NoPhysicsGui
+.\scripts\windows\start_brain.ps1 -WithSimulation -ServoFixture -NoPhysicsGui
 # 如需 MuJoCo 原生窗口，同时启动：
-# .\start_brain.ps1 -WithSimulation -ServoFixture
+# .\scripts\windows\start_brain.ps1 -WithSimulation -ServoFixture
 # 完全离线自动验收可加 -Headless
 ```
 

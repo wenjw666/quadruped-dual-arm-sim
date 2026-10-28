@@ -1,6 +1,7 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'common.ps1')
 foreach ($backend in @('gazebo','mujoco')) {
-    $status = docker exec qda-dev python3 /ws/scripts/stop_sim.py --backend $backend --check
+    $status = docker exec $ContainerName python3 /ws/scripts/stop_sim.py --backend $backend --check
     if ($LASTEXITCODE -eq 0) { Write-Host "$backend is already running."; continue }
     & "$PSScriptRoot/run_sim.ps1" -Backend $backend -Background
 }

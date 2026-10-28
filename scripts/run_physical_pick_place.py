@@ -6,7 +6,7 @@ from std_msgs.msg import String
 from qda_interfaces.srv import BrainRequest
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--out',default='/ws/output/grasp/ros-acceptance.json');parser.add_argument('--timeout',type=float,default=2400.);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--ready-timeout',type=float,default=300.,help='Wall seconds to wait for model/ROS/backend startup');parser.add_argument('--out',default='/ws/output/grasp/ros-acceptance.json');parser.add_argument('--timeout',type=float,default=2400.);args=parser.parse_args()
     rclpy.init();node=rclpy.create_node('physical_pick_place_operator')
     client=node.create_client(BrainRequest,'/brain/request')
     report=dict(success=False,source='production brain API and live physical telemetry',samples=[])
@@ -26,11 +26,13 @@ def main():
         return json.loads(f.result().response_json)
     tid='physical-pick-place-'+str(time.time_ns());submitted=False
     try:
-        until=time.monotonic()+120
+        until=time.monotonic()+args.ready_timeout
         while time.monotonic()<until:
             if not client.wait_for_service(timeout_sec=10):continue
             snapshot=call({'op':'status'})
-            if snapshot.get('capabilities',{}).get('physical_pick_place') and snapshot.get('locomotion',{}).get('ready'):break
+            if (snapshot.get('capabilities',{}).get('physical_pick_place')
+                and snapshot.get('locomotion',{}).get('ready')
+                and snapshot['locomotion'].get('physics_time',0.) >= 30.):break
             rclpy.spin_once(node,timeout_sec=.5)
         else:raise RuntimeError('PHYSICAL_TASK_NOT_READY')
         reply=call(dict(op='submit',task_id=tid,scene_version=snapshot['scene_version'],

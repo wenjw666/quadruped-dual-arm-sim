@@ -1,13 +1,13 @@
-﻿# 精修机器人模型 V1（参考照片驱动）
+# 精修机器人模型 V1（参考照片驱动）
 
 本版保留现有宇树 B2 四足和现有 Aubo A3 双臂 URDF，重做了上身装配。单张参考照片不能恢复精确尺寸，当前立柱、安装法兰和相机外壳按照片比例与现有 A3 网格尺度建模；不是实机测绘或可直接加工的工程图。
 
 ## 查看当前版本
 
 ```powershell
-.\show_robot_model.ps1
+.\scripts\windows\show_robot_model.ps1
 # 调整代码/尺寸后重新生成 URDF、SDF、MJCF 与预览
-.\show_robot_model.ps1 -Refresh
+.\scripts\windows\show_robot_model.ps1 -Refresh
 ```
 
 独立查看窗口中用鼠标拖动旋转、滚轮缩放；O 打开夹爪，C 闭合夹爪，R 恢复默认视角。该窗口只用于模型外形和机构联动评审，没有运行搬运任务。完整仿真仍使用 `run_sim.ps1 -Backend gazebo` 或 `-Backend mujoco`，需要静止查看时加 `-Manual`。

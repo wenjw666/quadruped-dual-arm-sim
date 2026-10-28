@@ -15,15 +15,16 @@
     [switch]$Headless
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'common.ps1')
 if ($Mapping -and $NoImages) { throw 'RGB-D mapping requires images; omit -NoImages.' }
 if ($Mapping -and $Backend -ne 'mujoco') { throw '-Mapping enables the MuJoCo RGB-D map. Gazebo retains its existing mapping pipeline.' }
 if ($MotionMode -eq 'auto') { $MotionMode = if ($Backend -eq 'mujoco') { 'rl' } else { 'kinematic' } }
 if ($Backend -eq 'gazebo' -and $MotionMode -eq 'rl') { throw 'RL dynamics currently requires MuJoCo.' }
 $domainId = if ($Backend -eq 'mujoco') { '8' } else { '7' }
-$running = docker exec qda-dev python3 /ws/scripts/stop_sim.py --backend $Backend --check
-if ($LASTEXITCODE -eq 0) { throw "$Backend is already running. Use .\stop_sim.ps1 -Backend $Backend first." }
+$running = docker exec $ContainerName python3 /ws/scripts/stop_sim.py --backend $Backend --check
+if ($LASTEXITCODE -eq 0) { throw "$Backend is already running. Use .\scripts\windows\qda.ps1 stop -Backend $Backend first." }
 if ($MotionMode -eq 'rl') {
-    docker exec -e PYTHONPATH=/opt/qda-rl-v2 qda-dev python3 /ws/scripts/check_v2_scene_assets.py
+    docker exec -e PYTHONPATH=/opt/qda-rl-v2 $ContainerName python3 /ws/scripts/check_v2_scene_assets.py
     if ($LASTEXITCODE -ne 0) { throw 'V2 assets/dependencies are not ready; launch canceled.' }
 }
 $guiValue = if ($Headless -or $NoPhysicsGui) { 'false' } else { 'true' }
@@ -39,9 +40,10 @@ $mappingValue = if ($Mapping) { 'true' } else { 'false' }
 $launchCommand = "source /opt/ros/humble/setup.bash; source /ws/install/setup.bash; cd /ws; exec ros2 launch qda_bringup pick_place.launch.py backend:=$Backend motion_mode:=$MotionMode brain:=$brainValue servo_fixture:=$fixtureValue allow_virtual_grasp:=$virtualValue scenario:=$Scenario gui:=$guiValue rviz:=$rvizValue render_images:=$imagesValue mapping_rgbd:=$mappingValue run_task:=$taskValue output_dir:=$outputDir"
 if ($Background) {
     $logPath = if ($Backend -eq 'mujoco') { '/ws/output/mujoco_session.log' } else { '/ws/output/gazebo_session.log' }
-    docker exec -d -e PYTHONPATH=/opt/qda-rl-v2 -e ROS_DOMAIN_ID=$domainId -e DISPLAY=host.docker.internal:0.0 qda-dev bash -lc "$launchCommand > $logPath 2>&1"
+    docker exec -d -e PYTHONPATH=/opt/qda-rl-v2 -e ROS_DOMAIN_ID=$domainId -e DISPLAY=host.docker.internal:0.0 $ContainerName bash -lc "$launchCommand > $logPath 2>&1"
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to start the simulation in the selected container.' }
     Write-Host "$Backend started on ROS_DOMAIN_ID=$domainId. Log: $logPath"
 } else {
-    docker exec -it -e PYTHONPATH=/opt/qda-rl-v2 -e ROS_DOMAIN_ID=$domainId -e DISPLAY=host.docker.internal:0.0 qda-dev bash -lc $launchCommand
+    docker exec -it -e PYTHONPATH=/opt/qda-rl-v2 -e ROS_DOMAIN_ID=$domainId -e DISPLAY=host.docker.internal:0.0 $ContainerName bash -lc $launchCommand
 }
 exit $LASTEXITCODE

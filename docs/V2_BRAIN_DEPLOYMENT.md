@@ -30,14 +30,14 @@ bash /ws/scripts/setup_v2_brain.sh
 日常启动（Windows 项目目录）：
 
 ```powershell
-.\start_brain.ps1 -WithSimulation
+.\scripts\windows\start_brain.ps1 -WithSimulation
 # 带光学校准板的视觉验收场景：
-.\start_brain.ps1 -WithSimulation -ServoFixture
+.\scripts\windows\start_brain.ps1 -WithSimulation -ServoFixture
 # 无图形界面验证：
-.\start_brain.ps1 -WithSimulation -Headless
+.\scripts\windows\start_brain.ps1 -WithSimulation -Headless
 ```
 
-已启动仿真时只运行 `.\start_brain.ps1` 启动/检查模型；模型仅监听容器环回地址 `127.0.0.1:8088`。独立仿真入口为 `.\run_sim.ps1 -Brain -Manual -Background`。不会启动麦克风或连接小智云。
+已启动仿真时只运行 `.\scripts\windows\start_brain.ps1` 启动/检查模型；模型仅监听容器环回地址 `127.0.0.1:8088`。独立仿真入口为 `.\scripts\windows\run_sim.ps1 -Brain -Manual -Background`。不会启动麦克风或连接小智云。
 
 容器内使用语义入口：
 
@@ -62,7 +62,7 @@ SQLite 会把进程重启时尚未完成的任务标记为 `INTERRUPTED`。目�
 本地语音测试文件生成：
 
 ```powershell
-.\scripts\synthesize_offline_voice.ps1 -TestSet
+.\scripts\windows\synthesize_offline_voice.ps1 -TestSet
 ```
 
 脚本只写 WAV，不录制麦克风、不播放音频、不上传声音。SAPI 是本轮离线 TTS 替代，不是已验证的小智云端 TTS。

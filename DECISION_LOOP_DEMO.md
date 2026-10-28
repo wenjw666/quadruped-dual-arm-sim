@@ -58,7 +58,7 @@ README 尚未更新，视频等待用户验收。
 先启动模型与仿真，再开两个终端，先录像、后执行任务。新代码需先按项目流程构建并加载。
 
 ```powershell
-.\run_sim.ps1 -Brain -Manual -Background -NoPhysicsGui -NoRviz
+.\scripts\windows\run_sim.ps1 -Brain -Manual -Background -NoPhysicsGui -NoRviz
 
 # 终端一：先录像
 docker exec -e ROS_DOMAIN_ID=8 qda-dev bash -lc 'source /opt/ros/humble/setup.bash; source /ws/install/setup.bash; python3 /ws/scripts/record_product_demo.py --out /ws/output/brain_loop/frames-01 --seconds 900'

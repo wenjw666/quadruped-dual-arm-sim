@@ -105,34 +105,31 @@ class MapperNode(Node):
 
     def _on_scan(self, msg: LaserScan) -> None:
         try:
-            transform = self.tf_buffer.lookup_transform("odom", msg.header.frame_id, rclpy.time.Time())
+            transform = self.tf_buffer.lookup_transform("odom", msg.header.frame_id, rclpy.time.Time.from_msg(msg.header.stamp))
         except Exception:
             return
-        yaw = _yaw(transform.transform.rotation)
-        ox = transform.transform.translation.x
-        oy = transform.transform.translation.y
+        rotation = _rot(transform.transform.rotation)
+        translation = transform.transform.translation
+        offset = np.array([translation.x, translation.y, translation.z])
         angle = msg.angle_min
         for distance in msg.ranges:
             if math.isfinite(distance) and msg.range_min < distance < msg.range_max:
-                x = ox + distance * math.cos(yaw + angle)
-                y = oy + distance * math.sin(yaw + angle)
-                hit = self._cell(x, y)
-                if hit is not None:
-                    self.grid[hit] = 100
-                free_steps = max(1, int(distance / self.resolution) - 1)
-                for step in range(free_steps):
-                    ratio = step / free_steps
-                    cell = self._cell(ox + ratio * (x - ox), oy + ratio * (y - oy))
-                    if cell is not None and self.grid[cell] < 50:
-                        self.grid[cell] = 0
+                # A legged base pitches/rolls: a horizontal sensor ray can hit
+                # the floor. Transform the 3-D endpoint at acquisition time;
+                # yaw-only projection creates phantom walls across free aisles.
+                hit_xyz = rotation @ np.array([distance * math.cos(angle), distance * math.sin(angle), 0.]) + offset
+                x, y, z = map(float, hit_xyz)
+                if self.obstacle_z[0] < z < self.obstacle_z[1]:
+                    self._mark_ray(float(offset[0]), float(offset[1]), x, y)
             angle += msg.angle_increment
-        self._clear_body(ox - 0.38 * math.cos(yaw), oy - 0.38 * math.sin(yaw), 0.40)
+        yaw = _yaw(transform.transform.rotation)
+        self._clear_body(float(offset[0]) - 0.38 * math.cos(yaw), float(offset[1]) - 0.38 * math.sin(yaw), 0.40)
 
     def _on_cloud(self, msg: PointCloud2) -> None:
         if self.publish_velodyne:
             self._publish_velodyne(msg)
         try:
-            transform = self.tf_buffer.lookup_transform("odom", msg.header.frame_id, rclpy.time.Time())
+            transform = self.tf_buffer.lookup_transform("odom", msg.header.frame_id, rclpy.time.Time.from_msg(msg.header.stamp))
         except Exception:
             return
         translation = transform.transform.translation

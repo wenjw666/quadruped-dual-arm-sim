@@ -1,6 +1,6 @@
 services:
   qda-dev:
-    image: qda-ros:humble
+    image: ${QDA_IMAGE:-qda-ros:humble}
     build:
       context: .
       dockerfile: docker/Dockerfile

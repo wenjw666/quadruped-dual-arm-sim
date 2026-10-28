@@ -28,11 +28,11 @@
 在此工作区的 PowerShell 中：
 
 ```powershell
-.\run_sim.ps1             # Gazebo 窗口 + 自动抓放，默认不启动 RViz
-.\run_sim.ps1 -Rviz       # 同时启动 RViz（软件渲染时会增加负担）
-.\run_sim.ps1 -Headless   # 无 GUI 完整仿真
-.\run_sim.ps1 -Manual     # 启动场景，不自动执行抓放
-.\stop_sim.ps1           # 关闭本工作区仿真与 Gazebo 窗口（包括本次后台启动的实例）
+.\scripts\windows\run_sim.ps1             # Gazebo 窗口 + 自动抓放，默认不启动 RViz
+.\scripts\windows\run_sim.ps1 -Rviz       # 同时启动 RViz（软件渲染时会增加负担）
+.\scripts\windows\run_sim.ps1 -Headless   # 无 GUI 完整仿真
+.\scripts\windows\run_sim.ps1 -Manual     # 启动场景，不自动执行抓放
+.\scripts\windows\stop_sim.ps1           # 关闭本工作区仿真与 Gazebo 窗口（包括本次后台启动的实例）
 ```
 
 脚本使用现有 `qda-dev` 容器及 `host.docker.internal:0.0` X 显示服务。已有 Gazebo 时拒绝启动第二套实例。先执行 `stop_sim.ps1`（或在原启动终端 Ctrl+C），再重新运行；不要在场景已完成抓放后直接重启任务节点来当作初始场景复测。停止脚本只针对该抓放 launch 和容器内 Gazebo 查看器，不停止 Docker 容器或编辑器。
