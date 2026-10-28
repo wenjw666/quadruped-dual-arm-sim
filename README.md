@@ -1,44 +1,72 @@
-# 四足双臂机器人仿真 | ROS 2 · MuJoCo · Gazebo
+<div align="center">
 
-**版本：v0.2.0 仿真工程基线** · ROS 2 Humble · MuJoCo 主后端 · Gazebo 对照后端
+# 四足 × 双臂 · 具身机器人仿真
 
-本仓库维护宇树 B2 四足底盘、双 Aubo A3 机械臂、Robotiq 2F-85 夹爪和相机组成的仿真工程，覆盖 RL 运控、建图与导航、RGB-D 感知、双臂控制、物理抓放、视觉伺服以及受约束的大脑决策闭环。演示素材来自真实仿真运行；页面内动画为加速后的预览，完整原始录像可下载查看。
+**从看见场景，到移动、抓取与放置。**
 
-> **验证边界：** v0.2.0 是当前 Windows + Docker + ROS 2 Humble 环境的工程基线，不表示所有算法、路线、实机或完整方案均已验收。RL 仍属实验性；定位、彩色地图配准和物理抓放目标位姿使用仿真真值。视频中的大脑闭环是有界提案审查，不代表开放式自主任务分解。
+B2 · 双 Aubo A3 · Robotiq 2F-85 · ROS 2 Humble
+
+![MuJoCo 主后端](https://img.shields.io/badge/MuJoCo-主仿真后端-14b8a6?style=flat-square)
+![Gazebo 对照](https://img.shields.io/badge/Gazebo-对照后端-64748b?style=flat-square)
+![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-2563eb?style=flat-square)
+![版本](https://img.shields.io/badge/版本-v0.2.0工程基线-8b5cf6?style=flat-square)
+
+[效果展示](#仿真效果演示) · [开始部署](#快速开始) · [系统架构](#ros-2-节点网络) · [验证记录](#验证记录)
+
+<a href="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/physical-pick-place.mp4">
+  <img src="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/hero-task.gif?raw=true" width="960" alt="实际仿真动图：夹爪接触抓取、RL 携物行走、目标台放置；5倍速回放" />
+</a>
+
+**接触抓取 → RL 携物移动 → 目标台放置**
+
+[▶ 观看抓放视频](media/readme/physical-pick-place.mp4) · [原速完整录像 · 122 秒](Videos/physical-pick-carry-place-validated.mp4) · [实现与验收](PHYSICAL_PICK_PLACE.md)
+
+</div>
 
 ## 仿真效果演示
 
-下列预览经过降分辨率、降帧率和加速处理以便在 README 中快速浏览。点击动图可播放对应的压缩 MP4；每节另附原始录像下载链接。动画中的速度倍率只改变回放展示，不改变任务结果或仿真验证数据。
+以下画面均来自实际仿真运行。**动图在页面内循环播放，点击可打开视频。** 预览经过降帧与加速，倍率仅影响回放。
 
-### RGB-D 彩色建图
+<table>
+<tr>
+<td width="50%" align="center">
+<h3>RGB-D · 彩色建图</h3>
+<a href="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/colored-map.mp4"><img src="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/colored-map.gif?raw=true" width="480" alt="实际 RGB-D 彩色点云地图环绕展示" /></a>
+<p>从相机观测累积彩色点云，查看场景覆盖。</p>
+<a href="media/readme/colored-map.mp4">▶ 视频</a> · <a href="Videos/colored_map_orbit.mp4">原片 · 18 秒</a> · <a href="NAVIGATION_MAPPING_DEMO.md#建图">技术记录</a>
+</td>
+<td width="50%" align="center">
+<h3>Nav2 × RL · 绕场导航</h3>
+<a href="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/navigation.mp4"><img src="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/navigation.gif?raw=true" width="480" alt="实际 Nav2 绕场导航，机器人行走与目标点到达反馈，约9倍速" /></a>
+<p>9 个目标点 · 路线约 27.18 m · 最大位置误差约 11.5 cm。</p>
+<a href="media/readme/navigation.mp4">▶ 视频 · 约 9×</a> · <a href="Videos/navigation-perimeter.mp4">原片 · 223 秒</a> · <a href="NAVIGATION_MAPPING_DEMO.md#导航">技术记录</a>
+</td>
+</tr>
+</table>
 
-[![MuJoCo 场景中累积生成的彩色点云地图](media/readme/colored-map.gif)](media/readme/colored-map.mp4)
+### 大脑决策 · 看清每一次调用与反馈
 
-[播放压缩预览](media/readme/colored-map.mp4) · [下载原始建图环绕视频（18 秒）](Videos/colored_map_orbit.mp4) · [建图数据、覆盖审计与真值配准说明](NAVIGATION_MAPPING_DEMO.md#建图)
+<div align="center">
+<a href="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/decision-loop.mp4">
+<img src="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/decision-loop.gif?raw=true" width="960" alt="实际大脑决策闭环：汇总传感器与任务状态、调用 VLM、校验提案、下发技能并回读执行结果；约3倍速" />
+</a>
 
-### 大脑决策反馈闭环
+**观测与状态 → VLM 提案 → 程序校验 → 技能执行 → 结果回读**
 
-[![实际 VLM 请求、程序校验、技能执行与结果回读](media/readme/decision-loop.gif)](media/readme/decision-loop.mp4)
+[▶ 观看闭环视频 · 约 3×](media/readme/decision-loop.mp4) · [原片 · 79 秒](Videos/decision-loop-clean.mp4) · [输入输出与调用逻辑](DECISION_LOOP_DEMO.md)
 
-[播放压缩预览](media/readme/decision-loop.mp4) · [下载原始决策闭环视频（78.9 秒，预览约 3×）](Videos/decision-loop-clean.mp4) · [模块输入输出、决策过程与边界](DECISION_LOOP_DEMO.md)
+</div>
 
-本例会展示模型原始输出、语义转换、程序校验、技能下发与执行结果。原始 VLM 曾给出错误的 `complete` 提案，程序门控阻止了错误放行；演示如实保留这一过程。
+<details>
+<summary><strong>演示条件与验证边界</strong> · 展开查看真实数据、模型限制及回放说明</summary>
 
-### Nav2 绕场导航
+- **抓放：** 物体保持自由刚体，通过夹爪接触搬运，没有物体传送或虚拟焊接。首页为 5× 回放；录像使用生产物理状态机，但录像回合的路线跟踪器与完整 ROS/Nav2 脑控验收回合分开记录，见[抓放报告](PHYSICAL_PICK_PLACE.md)。
+- **建图与定位：** RGB-D 来自实际仿真渲染，彩色地图配准、定位和物理抓放目标位姿使用仿真真值，不是独立 SLAM 或纯视觉抓取验收。
+- **导航：** 9 个目标点和误差来自一个干净回合，不代表统计成功率。
+- **大脑：** 本地 SmolVLM 提供有界提案，程序负责校验与放行；录像保留模型错误提出 `complete` 并被门控拦截的过程，不代表开放式自主任务分解。
+- **版本：** v0.2.0 为 Windows + Docker + ROS 2 Humble 工程基线。RL 仍属实验性，未完成所有路线、实机和完整方案验收。
 
-[![机器人通过 Nav2 和 RL 底盘控制绕场到达多个目标点](media/readme/navigation.gif)](media/readme/navigation.mp4)
-
-[播放压缩预览](media/readme/navigation.mp4) · [下载原始导航视频（222.9 秒，预览约 9×）](Videos/navigation-perimeter.mp4) · [9 个目标点、路线与测量结果](NAVIGATION_MAPPING_DEMO.md#导航)
-
-干净回合到达 9 个目标，实测路线约 27.18 m，最大位置误差约 11.5 cm。回放已加速，完整路线、误差与限制以演示记录为准。
-
-### 真实接触抓取、搬运与放置
-
-[![MuJoCo 中夹爪抓起自由物体、绕过货架并放置到目标台](media/readme/physical-pick-place.gif)](media/readme/physical-pick-place.mp4)
-
-[播放压缩预览](media/readme/physical-pick-place.mp4) · [下载原始抓放视频（122.4 秒，预览约 5×）](Videos/physical-pick-carry-place-validated.mp4) · [物理状态机、失败保护与验收数据](PHYSICAL_PICK_PLACE.md)
-
-物体在仿真中保持自由刚体并通过夹爪接触搬运，不使用物体传送或虚拟焊接。该录像由生产物理抓放状态机运行；录像采集回合的路线跟踪器与完整 ROS/Nav2 脑控验收回合分开记录，详见抓放报告。
+</details>
 
 ## ROS 2 节点网络
 
@@ -47,6 +75,9 @@
 ![当前仿真工程主要 ROS 2 控制与反馈关系](media/readme/ros2-network.png)
 
 图中汇总主要控制、Service/Action 调用与反馈路径。RL 策略在 `/qda_mujoco` 节点内部运行；本地 VLM 通过 HTTP 提供服务，不是 ROS 节点。架构图为便于阅读省略了部分状态订阅与通用接口。
+
+<details>
+<summary><strong>展开实际 rqt_graph 与 ROS 2 网络审计</strong></summary>
 
 ### 实际 rqt_graph
 
@@ -64,7 +95,12 @@
 
 现场审计确认 37 个节点、152 个话题；Nav2 和两套代价地图处于 active，RL 状态 ready 且无 fault。采样时机器人未执行任务，因此不能把空闲时未产生的导航命令、VLM 决策 trace 或 Servo 指标算作任务验收。全渲染和 RViz 同时运行时，实测仿真速度低于实时。
 
+</details>
+
 ## 功能范围
+
+<details>
+<summary><strong>查看各模块实现与当前限制</strong> · 运控 / 感知 / 导航 / 操作 / 大脑 / 语音</summary>
 
 | 模块 | 当前实现 | 已知边界 |
 |---|---|---|
@@ -78,6 +114,8 @@
 | 大脑与任务编排 | 本地 SmolVLM、反馈快照、候选提案校验、技能 Action、多步骤任务协调 | 有界辅助决策，不是任意自然语言任务自主分解；模型服务是独立 HTTP 进程 |
 | 语音 | 离线 WAV/Vosk 入口 | 无常驻麦克风、唤醒词、TTS 或小智云端服务 |
 | 可视化 | `/algorithm_view`、RViz 状态面板、地图/点云/路径/图像 | 头less Docker 中 RViz 可在虚拟显示器运行，不一定弹出 Windows 桌面窗口 |
+
+</details>
 
 ## 快速开始
 
@@ -143,6 +181,9 @@ Docker Desktop 使用 Linux 容器 / WSL2；桌面显示需要 Windows X11 服�
 - 已验证快照镜像配合现有完整工作区运行；从 Dockerfile 全新构建、干净克隆恢复资产的完整一键部署尚未验收。
 - `build/`、`install/`、日志、运行数据库、任务报告和原始传感器数据属于本地生成内容，不随源码仓库分发。
 
+<details>
+<summary><strong>镜像实测结果与后续版本更新方法</strong></summary>
+
 ### 镜像复核结果（2026-10-28）
 
 在本机 Windows Docker Desktop 实际导入上述 tar，创建独立容器并挂载完整工作区后，已完成：
@@ -171,6 +212,8 @@ Docker Desktop 使用 Linux 容器 / WSL2；桌面显示需要 Windows X11 服�
 ```
 
 导出会生成 SHA-256 文件并拒绝覆盖已有归档。镜像 tar 通过网盘分发，不提交到 Git；配套源码、资产版本和验证结果应同步记录。Ubuntu Docker Engine 的恢复命令及显示配置见 [Ubuntu 迁移说明](docs/DOCKER_DEPLOYMENT.md#ubuntu-迁移)。
+
+</details>
 
 ## 工程结构
 
