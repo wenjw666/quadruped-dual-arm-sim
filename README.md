@@ -125,7 +125,7 @@ B2 · 双 Aubo A3 · Robotiq 2F-85 · ROS 2 Humble
 
 | 项目 | 内容 |
 |---|---|
-| 百度网盘 | **待维护者上传后补充下载链接与提取码** |
+| 百度网盘 | [下载仿真镜像](https://pan.baidu.com/s/1HFdQVUul4sOBxReeAEjAlQ?pwd=tmxv) · 提取码：`tmxv` |
 | 归档文件 | `qda-ros-humble-v0.2.0-container.tar`（2,280,816,128 字节，约 2.12 GiB） |
 | 校验文件 | [下载 SHA-256 校验文件](qda-ros-humble-v0.2.0-container.tar.sha256) |
 | 镜像标签 | `qda-ros:humble-v0.2.0-container` |
