@@ -52,6 +52,8 @@ OpenCL loader 可以加载 `clGetPlatformIDs`，但返回 `-1001 (CL_PLATFORM_NO
 
 要把 Mali 纳入推理，需要修正正式 ICD、准备与系统 glibc/驱动匹配的 aarch64 Vulkan headers，并用 llama.cpp `GGML_VULKAN=ON` 构建。随后用 `--list-devices` 和小矩阵基准验证，再比较 mmproj offload、CPU 与 Vulkan 的延迟和功耗。仅替换一个预编译 llama.cpp 包会遇到当前系统 glibc 不兼容问题。
 
+在板端实际运行 CMake 配置 `-DGGML_VULKAN=ON` 时，错误为 `Could NOT find Vulkan (missing: Vulkan_LIBRARY Vulkan_INCLUDE_DIR)`；当前用户属于 `video`、`render`、`graphics` 等组，`/dev/mali0` 和 `/dev/dri/card0` 权限可用，所以缺口是开发头文件/导入库与正式 ICD 配置，而不是设备节点权限。
+
 仓库里保留了只读/候选验证工件：`scripts/c1200_vulkan_probe.c` 可在板端不依赖 Vulkan headers 地检查 loader 和物理设备，`scripts/c1200_opencl_probe.c` 可检查 OpenCL platform 数量，`scripts/c1200_mali_fixed.json` 是把 ICD 路径从错误的 `/usr/lib/libMali.so` 指向实际发现的 `/usr/bst/lib/libmali.so` 的候选 JSON。候选 JSON 尚未写入系统，也没有据此宣称 SmolVLM 已完成 GPU 推理；正式验证仍需 BSP/驱动提供方确认 ICD、权限、设备树 OPP 和 llama.cpp Vulkan 构建的组合。
 
 ## 对部署方案的影响
