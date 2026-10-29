@@ -76,7 +76,28 @@ ros2 topic echo /smolvlm/response --once
 1. **GMSL/CSI/ISP**：RC12 的 MAX96712 → CSI → C1200 ISP → `/dev/video4` 等节点。用 `camera_source:=gstreamer` 和 `ispsrc` 接入；当前板上 GMSL 通道仍报告 `not linked`，所以需要先接好供电、同轴线和 serializer，再验证实际画面。生产路径应把 ISP 的 NV12/DMABUF 直接交给原生 C++ 适配器，Python 节点只是调试桥。
 2. **USB/RealSense/UVC**：USB 主机 → UVC/HID/librealsense → 用户态 RGB。它不经过 RC12 的 MAX96712、CSI 或 ISP，适合先做 RGB 输入验证。当前板上没有 `pyrealsense2` 和 ROS RealSense 驱动，需要提供 aarch64 的 librealsense/ROS2 组件；在此之前可以用普通 UVC `/dev/videoN` 测试颜色流。
 
-## 目前的边界
+## 板端性能实测
+
+在当前 C1200 上，`llama-server` 使用 8 个线程、CPU-only、`--no-mmproj-offload`：
+
+| 指标 | 实测值 |
+|---|---:|
+| 常驻 RSS | 约 1.13 GiB |
+| VSZ | 约 1.92 GiB |
+| 线程数 | 19 |
+| 单次完整图像请求 | 约 5.37 秒 |
+| 视觉 prompt 阶段 | 约 4.09 秒 |
+| 语言生成 | 约 16.85 token/s |
+| 请求期间 CPU | 约占 8 个核心的 87–90% |
+| 板端内存 | 12 GiB，无 swap |
+
+连续请求的图像缓存命中后，延迟可降到约 1.1–1.5 秒；这不能作为冷启动或不同图像的保证值。当前服务适合事件触发语义理解，仍不适合 20–50 Hz 控制环。
+
+## Mali GPU 缺口
+
+板上存在 `/dev/mali0`、`/dev/dri/card0`、`libmali.so`、Vulkan/OpenCL loader，但当前 llama.cpp 构建结果为 `GGML_VULKAN=OFF`、`GGML_OPENCL=OFF`，`llama-server --list-devices` 没有可用设备，因此本轮没有 GPU 推理。
+
+板端还缺少可直接用于重编译的 Vulkan/OpenCL headers 和完整验证工具（例如 `vulkaninfo`/`clinfo`）。另外设备树日志有 `No OPPs found in device tree`，Mali 的时钟和频率管理也未形成可验收的性能条件。要启用 GPU，需要在 C1200 当前 glibc 环境中补齐 aarch64 Vulkan SDK headers、使用板上 ICD/loader 重新编译 `GGML_VULKAN=ON`，再用 `--list-devices`、小矩阵基准和 SmolVLM mmproj 基准逐项验证；仅有 `/dev/mali0` 不能说明 GPU 推理可用。
 
 - 这是 SmolVLM 语义理解部署，不能当作 SmolVLA 连续动作策略。
 - CPU 常驻服务已跑通，但约 5.6 秒/次不满足高频控制；适合事件触发、状态查询、任务语义转换和反馈审查。
