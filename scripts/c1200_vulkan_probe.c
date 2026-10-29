@@ -20,6 +20,7 @@ typedef VkResult (*PFN_vkEnumerateInstanceVersion)(uint32_t *);
 typedef VkResult (*PFN_vkCreateInstance)(const VkInstanceCreateInfo *, const void *, void **);
 typedef VkResult (*PFN_vkEnumeratePhysicalDevices)(void *, uint32_t *, void **);
 typedef void (*PFN_vkDestroyInstance)(void *, const void *);
+typedef void (*PFN_vkGetPhysicalDeviceProperties)(void *, void *);
 
 int main(void) {
     void *lib = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
@@ -28,6 +29,7 @@ int main(void) {
     PFN_vkCreateInstance create = (PFN_vkCreateInstance)dlsym(lib, "vkCreateInstance");
     PFN_vkEnumeratePhysicalDevices enumerate = (PFN_vkEnumeratePhysicalDevices)dlsym(lib, "vkEnumeratePhysicalDevices");
     PFN_vkDestroyInstance destroy = (PFN_vkDestroyInstance)dlsym(lib, "vkDestroyInstance");
+    PFN_vkGetPhysicalDeviceProperties props = (PFN_vkGetPhysicalDeviceProperties)dlsym(lib, "vkGetPhysicalDeviceProperties");
     uint32_t api = 0; VkResult rv = ver ? ver(&api) : -999;
     printf("enumerate_version_result=%d api=%u.%u.%u create_symbol=%s\n", rv,
            api >> 22, (api >> 12) & 0x3ff, api & 0xfff, create ? "yes" : "no");
@@ -40,6 +42,16 @@ int main(void) {
         if (cr == 0 && instance) {
             uint32_t count = 0; VkResult er = enumerate(instance, &count, 0);
             printf("enumerate_physical_devices_result=%d count=%u\n", er, count);
+            if (er == 0 && count && props) {
+                void *devices[8] = {0}; uint32_t n = count > 8 ? 8 : count;
+                if (enumerate(instance, &n, devices) == 0) {
+                    unsigned char raw[1024] = {0}; props(devices[0], raw);
+                    const uint32_t *u = (const uint32_t *)raw;
+                    const char *name = (const char *)(raw + 20);
+                    printf("device_name=%s vendor=0x%x device=0x%x api=%u.%u.%u\n",
+                           name, u[2], u[3], u[0] >> 22, (u[0] >> 12) & 0x3ff, u[0] & 0xfff);
+                }
+            }
             if (destroy) destroy(instance, 0);
         }
     }
