@@ -26,6 +26,8 @@
 
 另一次完整图像描述得到约 5.37 s：视觉 prompt 约 4.09 s，22 个输出 token 约 1.25 s，生成速度约 16.85 token/s。延迟会随图像尺寸、图像编码、prompt 缓存和输出长度变化；1 秒级结果来自缓存较热、短输出条件，不能当成固定实时指标。
 
+在当前服务参数 `--parallel 1` 下，两个并发请求会排队执行：2 并发总墙时约 3.22 s，单请求延迟 1.42/3.01 s；4 并发总墙时约 6.23 s，单请求延迟 1.17/2.78/4.15/6.12 s。并发压测峰值 RSS 约 1134.9 MB（比单请求约多 20 MB），平均 CPU 约 79.6%/84.0%（按 8 核归一）。因此当前实例没有并行吞吐能力，增加请求只会增加队列等待；若要提高吞吐，应先独立评估 `--parallel`、上下文长度和多实例的内存代价。
+
 当前结论是：板端 CPU 能够运行事件触发式 SmolVLM，内存余量充足，但连续高频视觉控制会把约 7 个 CPU 核长时间占满。模型输出适合状态查询、场景描述、任务语义转换和反馈审查，不适合直接放进高频控制环。
 
 ## Mali/GPU 检查
@@ -43,6 +45,8 @@
 - 板端没有 `vulkaninfo`、`clinfo`；
 - 没有 `/usr/include/vulkan` 或 OpenCL headers，无法直接在板上重新编译 Vulkan/OpenCL 后端；
 - `dmesg` 显示 Mali 设备没有 OPP 表、没有可用时钟追踪和优先级管理配置。
+
+OpenCL loader 可以加载 `clGetPlatformIDs`，但返回 `-1001 (CL_PLATFORM_NOT_FOUND_KHR)` 且 platform 数为 0；即使显式 `LD_PRELOAD=/usr/bst/lib/libmali.so` 仍然如此。当前镜像没有可用的 OpenCL ICD/platform 注册，不能把 `libOpenCL.so.1` 的存在当成 OpenCL 加速已经可用。
 
 进一步的只读 Vulkan 探针发现，当前失败主要是 ICD 路径问题：`/usr/bst/lib/mali.json` 写入了不存在的 `/usr/lib/libMali.so`。临时复制一份 JSON 并把路径改为实际存在的 `/usr/bst/lib/libmali.so` 后，Vulkan loader 成功创建 instance，并枚举到 1 个物理设备：`Mali-G78AE`，vendor `0x13b5`，设备 API `1.3.269`。这证明 GPU 硬件和 vendor 驱动可以被 Vulkan 访问，正式方案需要由 BSP 修正 ICD 文件或提供等效环境变量配置，不能直接把临时文件当系统修复。
 
