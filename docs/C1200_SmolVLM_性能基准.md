@@ -44,9 +44,11 @@
 - 没有 `/usr/include/vulkan` 或 OpenCL headers，无法直接在板上重新编译 Vulkan/OpenCL 后端；
 - `dmesg` 显示 Mali 设备没有 OPP 表、没有可用时钟追踪和优先级管理配置。
 
-要把 Mali 纳入推理，需要单独准备与系统 glibc/驱动匹配的 aarch64 Vulkan headers、loader/ICD 和 llama.cpp `GGML_VULKAN=ON` 构建，然后先用 `--list-devices` 和小矩阵基准验证，之后再比较 mmproj offload、CPU 与 Vulkan 的延迟和功耗。仅替换一个预编译 llama.cpp 包会遇到当前系统 glibc 不兼容问题。
+进一步的只读 Vulkan 探针发现，当前失败主要是 ICD 路径问题：`/usr/bst/lib/mali.json` 写入了不存在的 `/usr/lib/libMali.so`。临时复制一份 JSON 并把路径改为实际存在的 `/usr/bst/lib/libmali.so` 后，Vulkan loader 成功创建 instance，并枚举到 1 个物理设备：`Mali-G78AE`，vendor `0x13b5`，设备 API `1.3.269`。这证明 GPU 硬件和 vendor 驱动可以被 Vulkan 访问，正式方案需要由 BSP 修正 ICD 文件或提供等效环境变量配置，不能直接把临时文件当系统修复。
 
-仓库里保留了两个只读/候选验证工件：`scripts/c1200_vulkan_probe.c` 可在板端不依赖 Vulkan headers 地检查 loader 是否能创建基础实例，`scripts/c1200_mali_fixed.json` 是把 ICD 路径从错误的 `/usr/lib/libMali.so` 指向实际发现的 `/usr/bst/lib/libmali.so` 的候选 JSON。候选 JSON 尚未写入系统，也没有据此宣称 GPU 已可用；正式验证仍需 BSP/驱动提供方确认 ICD、权限、设备树 OPP 和 llama.cpp Vulkan 构建的组合。
+要把 Mali 纳入推理，需要修正正式 ICD、准备与系统 glibc/驱动匹配的 aarch64 Vulkan headers，并用 llama.cpp `GGML_VULKAN=ON` 构建。随后用 `--list-devices` 和小矩阵基准验证，再比较 mmproj offload、CPU 与 Vulkan 的延迟和功耗。仅替换一个预编译 llama.cpp 包会遇到当前系统 glibc 不兼容问题。
+
+仓库里保留了只读/候选验证工件：`scripts/c1200_vulkan_probe.c` 可在板端不依赖 Vulkan headers 地检查 loader 和物理设备，`scripts/c1200_opencl_probe.c` 可检查 OpenCL platform 数量，`scripts/c1200_mali_fixed.json` 是把 ICD 路径从错误的 `/usr/lib/libMali.so` 指向实际发现的 `/usr/bst/lib/libmali.so` 的候选 JSON。候选 JSON 尚未写入系统，也没有据此宣称 SmolVLM 已完成 GPU 推理；正式验证仍需 BSP/驱动提供方确认 ICD、权限、设备树 OPP 和 llama.cpp Vulkan 构建的组合。
 
 ## 对部署方案的影响
 
