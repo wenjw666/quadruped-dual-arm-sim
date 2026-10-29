@@ -97,10 +97,10 @@ ros2 topic echo /smolvlm/response --once
 
 板上存在 `/dev/mali0`、`/dev/dri/card0`、`libmali.so`、Vulkan/OpenCL loader，但当前 llama.cpp 构建结果为 `GGML_VULKAN=OFF`、`GGML_OPENCL=OFF`，`llama-server --list-devices` 没有可用设备，因此本轮没有 GPU 推理。
 
-板端还缺少可直接用于重编译的 Vulkan/OpenCL headers 和完整验证工具（例如 `vulkaninfo`/`clinfo`）。另外设备树日志有 `No OPPs found in device tree`，Mali 的时钟和频率管理也未形成可验收的性能条件。要启用 GPU，需要在 C1200 当前 glibc 环境中补齐 aarch64 Vulkan SDK headers、使用板上 ICD/loader 重新编译 `GGML_VULKAN=ON`，再用 `--list-devices`、小矩阵基准和 SmolVLM mmproj 基准逐项验证；仅有 `/dev/mali0` 不能说明 GPU 推理可用。
+板端还缺少可直接用于重编译的 Vulkan/OpenCL headers 和完整验证工具（例如 `vulkaninfo`/`clinfo`）。进一步的只读探针发现 `/usr/bst/lib/mali.json` 指向错误的 `/usr/lib/libMali.so`；临时改为实际存在的 `/usr/bst/lib/libmali.so` 后，Vulkan 成功枚举到 1 个 `Mali-G78AE` 物理设备。因此 GPU 硬件和 vendor loader 可以访问，但当前 llama.cpp 仍未编译 Vulkan 后端。另有 `No OPPs found in device tree`，时钟和频率管理还未形成可验收条件。正式启用 GPU 仍需 BSP 修复 ICD、补齐 aarch64 headers、以当前 glibc 重新编译 `GGML_VULKAN=ON`，再逐项验证 `--list-devices`、小矩阵和 SmolVLM mmproj。
 
 - 这是 SmolVLM 语义理解部署，不能当作 SmolVLA 连续动作策略。
 - CPU 常驻服务已跑通，但约 5.6 秒/次不满足高频控制；适合事件触发、状态查询、任务语义转换和反馈审查。
-- Mali 设备和用户态库存在，但当前 llama.cpp 构建没有 Vulkan 后端，不能把 `/dev/mali0` 的存在解释成已经完成 GPU 推理。下一步可单独做板端 Vulkan 构建和小模型基准，再决定是否把 mmproj/部分张量放到 GPU。
+- Mali 硬件已能通过临时 ICD 被 Vulkan 枚举，但当前 llama.cpp 构建没有 Vulkan 后端，仍不能解释成 SmolVLM 已完成 GPU 推理。下一步应先修复正式 ICD，再做板端 Vulkan 构建和小模型基准。
 - C1200 NPU/BSNN 的 YOLO 路径已验证，SmolVLM 的 Transformer 视觉编码器尚未进入 BSTNNX 编译；应先固定输入、做 CPU/ONNX 数值参考，再逐层尝试 NPU 子图。
 - 在真实执行器接入前，需要把文本响应限制为现有 `qda_brain` 合约允许的字段，并通过新鲜度、权限、动作范围、看门狗和急停检查。
