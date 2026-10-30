@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- One-participant relay profile: Docker bridge + C1200 Ethernet peer. -->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface autodetermine="true" />
+      </Interfaces>
+      <AllowMulticast>false</AllowMulticast>
+      <ExternalNetworkAddress>192.168.1.101</ExternalNetworkAddress>
+    </General>
+    <Discovery>
+      <ParticipantIndex>0</ParticipantIndex>
+      <Peers>
+        <Peer address="192.168.1.100" />
+      </Peers>
+    </Discovery>
+    <Compatibility>
+      <ManySocketsMode>false</ManySocketsMode>
+    </Compatibility>
+  </Domain>
+</CycloneDDS>

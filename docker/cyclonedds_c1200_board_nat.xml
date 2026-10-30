@@ -8,7 +8,7 @@
     </General>
     <Discovery>
       <ParticipantIndex>0</ParticipantIndex>
-      <Peers><Peer address="192.168.1.101" /></Peers>
+      <Peers><Peer address="192.168.1.101:9410" /></Peers>
     </Discovery>
     <Compatibility>
       <ManySocketsMode>false</ManySocketsMode>

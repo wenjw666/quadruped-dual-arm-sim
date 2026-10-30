@@ -8,7 +8,6 @@
       </Interfaces>
       <AllowMulticast>false</AllowMulticast>
       <ExternalNetworkAddress>192.168.1.101</ExternalNetworkAddress>
-      <ExternalNetworkMask>255.255.255.0</ExternalNetworkMask>
     </General>
     <Discovery>
       <ParticipantIndex>0</ParticipantIndex>
