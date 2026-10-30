@@ -38,7 +38,7 @@
 - `libmali.so`、`libEGL_mali.so`、`libvulkan.so`、`libOpenCL.so.1`；
 - Mali 内核日志识别为 Mali-G78AE，DDK `r47p0`。
 
-但当前仍不能把这些条件当作可用的 SmolVLM GPU 后端：
+在本轮修复前，仍不能把这些条件当作可用的 SmolVLM GPU 后端：
 
 - `llama-server --list-devices` 输出 `Available devices: (none)`；
 - 当前 llama.cpp 是 CPU-only 构建，没有 `GGML_VULKAN`；
@@ -51,6 +51,23 @@ OpenCL loader 可以加载 `clGetPlatformIDs`，但返回 `-1001 (CL_PLATFORM_NO
 进一步的只读 Vulkan 探针发现，当前失败主要是 ICD 路径问题：`/usr/bst/lib/mali.json` 写入了不存在的 `/usr/lib/libMali.so`。临时复制一份 JSON 并把路径改为实际存在的 `/usr/bst/lib/libmali.so` 后，Vulkan loader 成功创建 instance，并枚举到 1 个物理设备：`Mali-G78AE`，vendor `0x13b5`，设备 API `1.3.269`。这证明 GPU 硬件和 vendor 驱动可以被 Vulkan 访问，正式方案需要由 BSP 修正 ICD 文件或提供等效环境变量配置，不能直接把临时文件当系统修复。
 
 要把 Mali 纳入推理，需要修正正式 ICD、准备与系统 glibc/驱动匹配的 aarch64 Vulkan headers，并用 llama.cpp `GGML_VULKAN=ON` 构建。随后用 `--list-devices` 和小矩阵基准验证，再比较 mmproj offload、CPU 与 Vulkan 的延迟和功耗。仅替换一个预编译 llama.cpp 包会遇到当前系统 glibc 不兼容问题。
+
+为此新增了 `scripts/c1200_build_llama_vulkan.sh`。它把 Vulkan 版本安装到独立的 `/userdata/smolvlm/build-vulkan`，不覆盖当前 CPU 版本；脚本要求 Vulkan headers、`glslc`、`libvulkan.so` 和修正后的 ICD JSON。构建成功后应先确认 `--list-devices` 能看到 Mali，再单独启动 Vulkan 服务做 CPU/GPU 延迟、RSS、温度和输出一致性对比。
+
+## GPU 后端实际修复结果（2026-10-30）
+
+已经在板端私有目录完成 Vulkan 版本构建，未替换原 CPU 服务：
+
+```text
+/userdata/smolvlm/build-vulkan/bin/llama-server --list-devices
+Vulkan0: Mali-G78AE (12787 MiB, 12787 MiB free)
+```
+
+当前使用的解决路径是：修正 ICD 路径、补充 Vulkan 1.4.350 headers、补充 arm64 SPIR-V headers 和 shader 工具，并用 `glslangValidator` 包装出 llama.cpp 所需的 `glslc` 命令接口。构建过程中不支持的 cooperative matrix、integer dot 和 float 扩展被显式关闭，保留了通用 Vulkan shader 路径。
+
+SmolVLM GPU 实测使用独立 8089 服务，参数为 `--device Vulkan0 -ngl 99 --mmproj-offload`：热缓存的 3 次请求为 **1.048–1.052 s**，生成速度约 **21.8 token/s**，服务 RSS 约 **0.91 GiB**，线程数 22。第一次冷图像请求的视觉 prompt 阶段约 **49.36 s**，说明当前 Mali/Vulkan 通用 shader 路径的冷启动和视觉 projector 仍然很慢。使用 GPU 解码、CPU projector（`--no-mmproj-offload`）的冷请求约 **10.70 s**。
+
+因此 GPU 后端已经可以实际运行并参与推理，但目前仍作为实验后端，CPU 版本继续作为 ROS 默认服务；需要进一步做 shader 缓存、输入尺寸、mmproj 分块和温度/功耗优化后，才能替换默认路径。启动脚本支持 `C1200_SMOLVLM_BACKEND=vulkan` 选择该后端。
 
 在板端实际运行 CMake 配置 `-DGGML_VULKAN=ON` 时，错误为 `Could NOT find Vulkan (missing: Vulkan_LIBRARY Vulkan_INCLUDE_DIR)`；当前用户属于 `video`、`render`、`graphics` 等组，`/dev/mali0` 和 `/dev/dri/card0` 权限可用，所以缺口是开发头文件/导入库与正式 ICD 配置，而不是设备节点权限。
 
