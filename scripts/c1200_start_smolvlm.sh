@@ -16,6 +16,8 @@ else
 fi
 MODEL="$ROOT/models/SmolVLM-500M-Instruct-Q8_0.gguf"
 MMPROJ="$ROOT/models/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf"
+WARMUP_IMAGE="${C1200_SMOLVLM_WARMUP_IMAGE:-$ROOT/test_mujoco_overview.jpg}"
+WARMUP_ENABLED="${C1200_SMOLVLM_WARMUP:-1}"
 
 . /opt/ros/humble/setup.bash
 . "$ROOT/ros_ws/install/setup.bash"
@@ -37,6 +39,17 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 curl -fsS "http://127.0.0.1:$PORT/health" >/dev/null
+
+# The built-in llama.cpp empty warmup does not execute the multimodal image
+# projector.  Run one real image request so the first ROS request does not pay
+# the 40–50 second Vulkan shader/projector initialization cost.  The helper is
+# optional so older board installs remain compatible.
+WARMUP_HELPER="$ROOT/c1200_smolvlm_warmup.py"
+if [[ "$WARMUP_ENABLED" != "0" && -f "$WARMUP_HELPER" && -f "$WARMUP_IMAGE" ]]; then
+  python3 "$WARMUP_HELPER" "$WARMUP_IMAGE" \
+    --url "http://127.0.0.1:$PORT/v1/chat/completions" \
+    >"$ROOT/logs/llama-warmup.log" 2>&1 || true
+fi
 
 if ! pgrep -f "c1200_smolvlm/lib/c1200_smolvlm/vlm_node" >/dev/null; then
   nohup ros2 run c1200_smolvlm vlm_node \

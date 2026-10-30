@@ -7,10 +7,11 @@
       <AllowMulticast>false</AllowMulticast>
     </General>
     <Discovery>
+      <ParticipantIndex>0</ParticipantIndex>
       <Peers><Peer address="192.168.1.101" /></Peers>
     </Discovery>
     <Compatibility>
-      <ManySocketsMode>none</ManySocketsMode>
+      <ManySocketsMode>false</ManySocketsMode>
     </Compatibility>
   </Domain>
 </CycloneDDS>

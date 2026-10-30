@@ -11,12 +11,13 @@
       <ExternalNetworkMask>255.255.255.0</ExternalNetworkMask>
     </General>
     <Discovery>
+      <ParticipantIndex>0</ParticipantIndex>
       <Peers>
         <Peer address="192.168.1.100" />
       </Peers>
     </Discovery>
     <Compatibility>
-      <ManySocketsMode>none</ManySocketsMode>
+      <ManySocketsMode>false</ManySocketsMode>
     </Compatibility>
   </Domain>
 </CycloneDDS>

@@ -133,10 +133,10 @@ class VLMNode(Node):
                     raise RuntimeError("failed to encode image")
                 payload = {
                     "messages": [{"role": "user", "content": [
-                        {"type": "text", "text": prompt},
                         {"type": "image_url", "image_url": {
                             "url": "data:image/jpeg;base64," + base64.b64encode(encoded.tobytes()).decode("ascii")
                         }},
+                        {"type": "text", "text": prompt},
                     ]}],
                     "temperature": 0,
                     "max_tokens": self.max_tokens,

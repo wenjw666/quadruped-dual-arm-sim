@@ -69,6 +69,10 @@ SmolVLM GPU 实测使用独立 8089 服务，参数为 `--device Vulkan0 -ngl 99
 
 因此 GPU 后端已经可以实际运行并参与推理，但目前仍作为实验后端，CPU 版本继续作为 ROS 默认服务；需要进一步做 shader 缓存、输入尺寸、mmproj 分块和温度/功耗优化后，才能替换默认路径。启动脚本支持 `C1200_SMOLVLM_BACKEND=vulkan` 选择该后端。
 
+### 视觉前缀缓存与启动预热
+
+进一步测试确认，llama.cpp 的空文本 `--warmup` 不会执行图像 projector。将 OpenAI 多模态内容顺序固定为“图像→文本”，并在服务启动时发送一张样图做 `max_tokens=1` 预热，可以让后续更换提示词时复用视觉前缀。Vulkan 首次预热仍需约 48.7 秒，但预热后的不同文本请求约 5.6 秒；CPU 服务启动预热约 4.2 秒，后续 64 token 请求约 4.3 秒。仓库中的 `scripts/c1200_smolvlm_warmup.py` 和启动脚本已实现该流程，可用 `C1200_SMOLVLM_WARMUP=0` 关闭。
+
 在板端实际运行 CMake 配置 `-DGGML_VULKAN=ON` 时，错误为 `Could NOT find Vulkan (missing: Vulkan_LIBRARY Vulkan_INCLUDE_DIR)`；当前用户属于 `video`、`render`、`graphics` 等组，`/dev/mali0` 和 `/dev/dri/card0` 权限可用，所以缺口是开发头文件/导入库与正式 ICD 配置，而不是设备节点权限。
 
 仓库里保留了只读/候选验证工件：`scripts/c1200_vulkan_probe.c` 可在板端不依赖 Vulkan headers 地检查 loader 和物理设备，`scripts/c1200_opencl_probe.c` 可检查 OpenCL platform 数量，`scripts/c1200_mali_fixed.json` 是把 ICD 路径从错误的 `/usr/lib/libMali.so` 指向实际发现的 `/usr/bst/lib/libmali.so` 的候选 JSON。候选 JSON 尚未写入系统，也没有据此宣称 SmolVLM 已完成 GPU 推理；正式验证仍需 BSP/驱动提供方确认 ICD、权限、设备树 OPP 和 llama.cpp Vulkan 构建的组合。
