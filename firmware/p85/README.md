@@ -89,6 +89,7 @@ sudo python3 host/p85ctl.py status
 
 - [协议及 A/R 业务帧](docs/PROTOCOL.md)
 - [R0 SDK、MCAL 和任务接入](rt0/PORTING.md)
+- [实验 sample 审阅与 R0 固件写入流程](docs/R0_FLASHING.md)
 - [板上验证记录、备份和剩余缺口](docs/VALIDATION.md)
 - [接线与首次单电机调试](docs/BRINGUP.md)
 
