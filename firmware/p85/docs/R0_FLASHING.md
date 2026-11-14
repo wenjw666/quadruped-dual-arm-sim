@@ -1,6 +1,6 @@
 # R0 示例审阅与固件写入流程
 
-审阅日期：2026-11-15（Asia/Tokyo）。本次只读取示例与官方文档，没有执行示例、擦写 Flash 或重启目标板。资料中的命令是被审阅内容，不作为本次执行指令。
+审阅及更新日期：2026-11-15（Asia/Tokyo）。没有执行附件烧录脚本、擦写 Flash 或重启目标板。资料中的部署命令作为技术资料审阅。随后找到的官方 R 核开发指南、实际 R5 编译结果和板载 DTB 布局证据见 [源码与编译核查](R0_SDK_FINDINGS.md)。
 
 ## 示例包含什么
 
@@ -35,33 +35,33 @@ D:/1110实验课任务划分/1110实验课任务划分/canfd通信位置跟踪/�
 ```text
 匹配的 realtime_code_core0 + R 交叉工具链
     → 接入 P85 源码、任务、IPC、CAN MCAL 与时序配置
-    → make.sh all 生成 RT0 BIN
+    → make.sh 生成签名的 RT0 RELEASE BIN
     → 把 BIN 传到目标板 Ubuntu
     → 更新经核实的 RT0 Flash 槽位并回读校验
     → 重启，使启动链加载新 RT0 固件
     → 验证 A/R 握手，再验证 CAN FD
 ```
 
-官方 v2.0.x CAN FD 页面给出的构建入口为：
+官方 v2.0.x《R 核子系统开发快速上手指南》明确给出完整源码包为 SDK 的 `opensource_code/realtime_code.zip`。其全量构建入口为：
 
 ```sh
 cd realtime_code_core0
-./make.sh all
+sudo ./make.sh
 # 输出：out/BST-REALTIME0-RELEASE-C1200-1-3-0.bin
 ```
 
-这里只在具备完整 SDK 和其规定的工具链环境时适用。本仓库 `firmware/p85/CMakeLists.txt` 是 Linux 验证构建，不生成 R0 固件；在 A 核用 gcc 编译 `acore_msgbox_ipc.c` 也不会更新 R 核。
+该脚本依次生成 IDL、构建 RTOS 库、编译主工程并签名。烧录应使用 `BST-REALTIME0-RELEASE-*.bin`，不能使用未签名的 `realtime_freertos_core0.bin`。这里只在具备完整 SDK 和其规定的构建/签名依赖时适用；当前尚未构建完整 P85 固件。本仓库 CMake 是 Linux 验证构建；`tools/check_r5_compile.py` 只生成 R5 对象/静态库；在 A 核用 gcc 编译 `acore_msgbox_ipc.c` 也不会更新 R 核。
 
 ## 实验脚本的写入方式
 
-这是实验附件的流程；官方通用 FlashTool 页面没有确认此脚本的裸偏移。
+官方 R 核开发指南的“通过 A 核烧录”一节也给出了 `flash_R_bin.sh`，其核编号到偏移的映射与实验附件一致。当前板 Flash 只读备份中的 SBL DTB 已核对为相同布局，且与本地 V2.0.1 对应 DTB 的 SHA256 一致；详见 `R0_SDK_FINDINGS.md`。
 
 - 脚本第 82–87 行将 RT0–RT5 对应到 `0xB00000`、`0xC00000`、`0xD00000`、`0xE00000`、`0xF00000`、`0x1000000`。
 - `funBurn` 使用 `/dev/mtdblock0`，固定擦除 `0x100000`（1 MiB），按文件实际长度写入和读回，比较 MD5。
 - 参数最后的 `0` 是 RT0 核编号，脚本据此选择偏移。
 - 脚本没有拒绝大于 1 MiB 的镜像，也没有验证镜像版本、格式、签名或板型；MD5 回读仅说明写入字节一致。实际写入前必须核实布局与镜像兼容性。
 
-实验中的烧录命令形式如下，仅解释参数，**不是当前已确认可执行的部署命令**：
+官方及实验中的烧录命令形式如下。它要求先有匹配且经过签名的 RELEASE 镜像；**当前尚无本工程可部署的 P85 镜像，本次没有执行该命令**：
 
 ```sh
 sudo bash flash_R_bin.sh BST-REALTIME0-RELEASE-C1200-1-3-0.bin 0
@@ -85,7 +85,7 @@ sudo bash flash_R_bin.sh BST-REALTIME0-RELEASE-C1200-1-3-0.bin 0
 
 ## 对 P85 工程的下一步
 
-示例有用，但没有补齐完整 R SDK。仍需取得与当前 BSP 兼容的 realtime_code_core0、依赖库、交叉工具链和构建说明；若要重建原 IPC 示例，还需 acore_ipc_server.c。
+示例有用，但没有补齐完整 R SDK。工具链已经安装并完成 R5 编译验证；仍需取得与当前 BSP 兼容的 `opensource_code/realtime_code.zip` 及其 IDL/RTOS/签名依赖。若要重建附件原 IPC 示例，还需 `acore_ipc_server.c`；实现本工程服务则按已有 P85 MsgBox 适配器接入。
 
 之后按照 `../rt0/PORTING.md` 接入现有 P85 核心。先构建并验证不发 CAN 的 OFF 状态 A/R 握手，再配置 1 Mbps/5 Mbps FD+BRS、核验真实 RX 元数据并进行 CAN 分析仪测试。官网 CAN 演示的默认 500 kbps/1 Mbps 不能直接用于 P85。
 
@@ -94,6 +94,7 @@ sudo bash flash_R_bin.sh BST-REALTIME0-RELEASE-C1200-1-3-0.bin 0
 官方网页在 2026-11-15 直接通过 HTTPS 获取成功，使用 v2.0.x 版本入口；本地 HTML 和正文留档在 `output/p85_r_core_reading/official-20261115/`，未纳入 Git。
 
 ```text
+https://documents.blacksesame.com/sesameX/aura/2.0.x/System_configuration/r-core/r-core-development-guide
 https://documents.blacksesame.com/sesameX/aura/2.0.x/Basic_Application/pin_user_guide/canfd/
 https://documents.blacksesame.com/sesameX/aura/2.0.x/Quick_start/board-flashing/flash-tool/
 ```

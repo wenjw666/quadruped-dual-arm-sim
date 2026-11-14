@@ -2,7 +2,7 @@
 
 本工程用于 AURA/C1200 的 Linux A 核下发任务、R0 核以 10 ms 周期生成 P85MAX-S CAN FD 指令。目标是先打通一个电机，再扩展为四足底盘的集中多电机控制。
 
-**2026-11-14 当前状态：协议、状态机、主机程序和仿真验证已完成；R0 固件尚未构建、烧录和运行，真实 CAN 链路尚未验证。现在接上电机还不能运行本工程。**
+**2026-11-15 当前状态：协议、状态机、主机程序和仿真验证已完成，P85 便携核心已通过 Cortex-R5 对象编译；完整 P85 R0 固件尚未构建、烧录和运行，真实 CAN 链路尚未验证。现在接上电机还不能运行本工程。**
 
 已连接 `bst@192.168.1.3`，源码部署于 `/home/bst/p85_control`。板上 BSP 为 `V2.0.1_20260813-185450_276175`。现有 RT0 在线，但 P85 HELLO 返回超时 `-110`，不能把“RT0 在线”当作“P85 服务已安装”。
 
@@ -41,6 +41,10 @@ ctest --test-dir build --output-on-failure
 ```
 
 该 CMake 工程用于 Linux 验证，**不会生成 R0 固件**。没有厂商头文件时，只构建便携核心和仿真测试。内存检查可用 `-DP85_SANITIZE=ON` 创建独立构建目录。
+
+## R5 编译进展
+
+官网明确支持在 Linux/WSL2 自行编译 R 核，完整工程来自 SDK 的 `opensource_code/realtime_code.zip`。本机已编译公开 SDK 中的 R5 裸机示例，并用 `tools/check_r5_compile.py` 将 P85 协议、控制、业务帧和运行时编译为 R5 静态库；这不包含 MCAL/MsgBox 板级链接或发布签名。核查范围、构建证据和确切缺包见 [R 核源码与编译核查](docs/R0_SDK_FINDINGS.md)。
 
 ## 无电机软件演练
 
@@ -90,6 +94,7 @@ sudo python3 host/p85ctl.py status
 - [协议及 A/R 业务帧](docs/PROTOCOL.md)
 - [R0 SDK、MCAL 和任务接入](rt0/PORTING.md)
 - [实验 sample 审阅与 R0 固件写入流程](docs/R0_FLASHING.md)
+- [官网、附件及 R5 编译核查](docs/R0_SDK_FINDINGS.md)
 - [板上验证记录、备份和剩余缺口](docs/VALIDATION.md)
 - [接线与首次单电机调试](docs/BRINGUP.md)
 

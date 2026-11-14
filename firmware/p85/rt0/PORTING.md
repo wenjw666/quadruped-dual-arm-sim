@@ -5,11 +5,11 @@
 ## 当前缺少的输入
 
 1. 与板上 `V2.0.1_20260813-185450_276175` 相容的 `realtime_code_core0` 源码和所需库，包含启动、链接脚本、RTOS、MsgBox、CAN MCAL、CanIf 配置和时钟配置。
-2. 工程要求的 R 核交叉编译器及构建方式。Linux AArch64 编译器和仅含 startup/linker/main 的 `r5baremetal.zip` 不能代替这个工程。
-3. 实际 Flash 布局、RT0 槽位、启动校验/签名和恢复流程。旧示例的 `0xB00000/1 MiB` 尚未被验证为新板的可写槽位。
+2. 与完整 SDK 匹配的浮点/枚举 ABI、构建脚本及 IDL/签名依赖。本机 ARM 12.2 工具链已经可用，裸机示例和 P85 四个便携源文件已交叉编译；还没有链接完整 CAN/IPC 固件。完整包名为 `opensource_code/realtime_code.zip`，详见 `../docs/R0_SDK_FINDINGS.md`。
+3. 拟部署镜像的启动校验/签名、版本兼容性及恢复流程。当前板只读备份中的 SBL DTB 与本地 V2.0.1 对应文件哈希相同，已确认配置为 RT0 Flash `0xB00000`、容量 1 MiB、SRAM `0x04000000`；这尚不证明任意镜像可用。
 4. CAN0 实际 HTH、RxPduId 到仲裁 ID 的传递、时钟和 TDC 配置、载板版本及收发器控制。
 
-不能用 SDK 2.1.0 的示例直接覆盖 2.0.1 固件。当前所有板上改动限于 `/home/bst/p85_control` 和仿真记录；Flash 只读备份已完成。
+使用 SDK 2.1.0 材料时仍需确认其与当前 2.0.1 BSP 的兼容性。当前所有板上改动限于 `/home/bst/p85_control` 和仿真记录；Flash 只读备份已完成。
 
 ## 构建单位
 
@@ -119,4 +119,4 @@ Can/CanIf 的 HOH、控制器、过滤器、64 字节邮箱设置
 4. 接电机后只做失能探测，校验温度/电压、回传 MSGID、状态和单位，再开展低增益保持与小幅移动。
 5. 记录周期抖动、队列峰值、TX 完成/错误、反馈新鲜度、主机断开保护和实际停止行为。
 
-这里只给出部署顺序，没有提供针对未确认槽位的擦写命令。只读备份及当前验证边界见 `../docs/VALIDATION.md`。
+这里只给出部署顺序；官方烧录流程和当前板布局证据见 `../docs/R0_FLASHING.md`、`../docs/R0_SDK_FINDINGS.md`。只读备份及当前验证边界见 `../docs/VALIDATION.md`。

@@ -87,16 +87,22 @@ P85 MsgBox exchange failed (-110)
 | flash-baseline-64m.bin | `81f90bfb533be3b374e8a55787d525cf64066f5b8982b8138bc29a58cafd3417` |
 | rt0-offset-b00000-unverified-1m.bin | `2378169de79bf9d5c4f62ed9ce3dd6740d6d21717ba7c00b6ba401ae49c613ac` |
 
-板上位置 `/home/bst/p85_control/artifacts/2026-11-14/`；本地位置 `output/p85_r_core_reading/board_backup/`，均不进 Git。第二个文件只是从旧例偏移截取的候选区间，**不是经确认的 RT0 可写分区**。区间中可见 `CanAppTask`、`welcome to bst-rtos`、`v1.3.0-2025build Aug 13 2026 17:38:28` 等字符串，只能帮助识别，不能证明布局或 P85 支持。
+板上位置 `/home/bst/p85_control/artifacts/2026-11-14/`；本地位置 `output/p85_r_core_reading/board_backup/`，均不进 Git。第二个文件最初按旧例偏移截取，文件名保留 `unverified` 以保持记录一致。2026-11-15 又解析了同一 Flash 备份中的 SBL DTB：RT0 配置为 `0xB00000/1 MiB`，SRAM 为 `0x04000000`，且 DTB 与本地 V2.0.1 对应文件 SHA256 相同，因此现在有布局配置依据。区间中可见 `CanAppTask`、`welcome to bst-rtos`、`v1.3.0-2025build Aug 13 2026 17:38:28`，但这些不证明已有 P85 服务，也不验证待刷镜像。
 
 ## SDK 与资料检查
 
 - 用户的 V2.0.1 镜像 SDK ZIP 已检查：包含镜像与烧录相关文件，未找到完整 R0 工程。
 - A/R 实验的 `rcore_msgbox_server.patch` 引用了未附带的 `acore_ipc_server.c`，不能仅凭补丁恢复完整服务。
 - 两份同名 RT0 固件哈希不同，分别可见 IPC/DM 示例线索，没有可确认的 P85 组合固件；未烧录。
-- 官方 SDK Manager 25（V2.1.0）已完整下载（4,517,041,049 字节），流式遍历 Docker 各层的 332,916 个文件条目，扫描正常结束。未发现 `realtime_code_core0`、CAN MCAL 配置或可用的 R 核完整工具链。`r5baremetal.zip` 仅有 6 个基础启动/链接/主程序文件；已检查的 Linux IPC 源包、应用包及启动脚本也不能替代 RTOS/CAN MCAL 工程。完整归档和扫描清单保存在本地忽略目录 `output/p85_r_core_reading/`，未运行其安装脚本。
+- 官方 SDK Manager 25（V2.1.0）已完整下载（4,517,041,049 字节），流式遍历 Docker 各层的 332,916 个文件条目，扫描正常结束。未发现 `realtime_code_core0`、CAN MCAL 配置或可用的 R 核完整工具链。`r5baremetal.zip` 有 6 个 ZIP 条目（1 个目录和 5 个文件，含启动、链接脚本、主程序、Makefile 及 readme）；已检查的 Linux IPC 源包、应用包及启动脚本也不能替代 RTOS/CAN MCAL 工程。完整归档和扫描清单保存在本地忽略目录 `output/p85_r_core_reading/`，未运行其安装脚本。
 - 官方在线 CAN 示例讲解 `realtime_code_core0`，默认 500 kbps/1 Mbps，不能直接用于 P85 的 1/5 Mbps；网页时序表须与实际结构/寄存器编码核对。
 - 官方硬件图纸中找到 V1.2 J0801 的 RT_CANFD0 引脚，但尚未确认用户实物载板修订版。接线表见 `BRINGUP.md`。
+
+## 2026-11-15 R5 交叉编译核查
+
+已在本机 WSL 使用 ARM 官方 12.2.MPACBTI-Rel1 工具链构建公开 SDK 中的 `r5baremetal`：生成 66,888 字节 BIN，ARM ELF32，入口/加载地址 `0x04000000`。原示例入口名称不匹配，在隔离副本中将链接脚本 `_reset` 改成汇编实际导出的 `_boot` 后消除相应告警；未将其认定为适合当前板部署的发布镜像。
+
+`tools/check_r5_compile.py` 还用 Cortex-R5/soft-float 探测配置将 P85 四个便携源文件编译为 `libp85_r5.a`，严格告警检查通过。这不是固件链接或实机测试；MsgBox/MCAL 适配器仍待完整 R SDK。官方指南确认可独立构建及完整包名 `opensource_code/realtime_code.zip`。详细检索范围、构建证据、布局与签名依赖见 [源码与编译核查](R0_SDK_FINDINGS.md)。
 
 ## 完成边界和剩余验收
 
@@ -106,8 +112,9 @@ P85 MsgBox exchange failed (-110)
 | 轨迹、保护、会话和 CSV | 完成软件实现与 Linux 仿真验证 |
 | A 核真实 MsgBox 库 | 已构建并执行，P85 服务握手仍失败 |
 | R0 任务、IPC 接收与 MCAL | 可移植核心及适配基础已写，缺匹配 SDK 进行最终接入 |
-| R0 固件构建/烧录 | 未完成 |
+| R5 目标编译 | 裸机示例构建、P85 便携对象编译已通过 |
+| 完整 P85 R0 固件构建/烧录 | 未完成，缺完整 SDK 及签名依赖 |
 | CAN 1/5 Mbps、FD/BRS/TDC、过滤器 | 未完成实际配置及波形验证 |
 | 电机保持、位置移动、正弦 | 未接实物，未验证 |
 
-下一项外部依赖是匹配该板 BSP 的完整 R0 开发工程及工具链，随后按 `../rt0/PORTING.md` 逐项完成接入。没有这部分不能承诺“只接电机即可运行”。即使无电机时固件和分析仪验证通过，实际 ID、动力学增益、方向和断流停止行为仍需要首次台架验收。
+下一项外部依赖是匹配该板 BSP 的 `opensource_code/realtime_code.zip` 及 IDL/签名依赖；R5 工具链已有。随后按 `../rt0/PORTING.md` 逐项完成接入。没有这部分不能承诺“只接电机即可运行”。即使无电机时固件和分析仪验证通过，实际 ID、动力学增益、方向和断流停止行为仍需要首次台架验收。
