@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""End-to-end wire/CLI supervision tests against the explicit software plant."""
+import csv
+import importlib.util
+import json
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+BUILD = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT/"build"
+sys.argv = [sys.argv[0], *sys.argv[2:]]
+spec = importlib.util.spec_from_file_location("p85ctl", ROOT/"host/p85ctl.py")
+ctl = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ctl)
+
+class EndToEnd(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="p85test-")
+        self.path = Path(self.directory.name)
+        self.sock = str(self.path/"server")
+        self.daemon = None
+    def tearDown(self):
+        if self.daemon:
+            self.daemon.terminate()
+            try:
+                _, errors = self.daemon.communicate(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.daemon.kill()
+                self.daemon.communicate()
+                raise
+            self.assertEqual(self.daemon.returncode, 0, errors)
+        self.directory.cleanup()
+    def server(self, mode="--simulate", *options):
+        self.daemon = subprocess.Popen([str(BUILD/"p85d"), mode, "--socket", self.sock, *options],
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for _ in range(100):
+            if Path(self.sock).exists():
+                return
+            if self.daemon.poll() is not None:
+                self.fail(str(self.daemon.communicate()))
+            time.sleep(0.01)
+        self.fail("daemon socket did not appear")
+    def cli(self, *args, timeout=12):
+        return subprocess.run([sys.executable, str(ROOT/"host/p85ctl.py"), "--transport", "socket",
+                               "--socket", self.sock, *args], capture_output=True, text=True, timeout=timeout)
+    def test_sine_full_cycle_and_disable(self):
+        self.server()
+        result = self.cli("--csv", str(self.path/"sine.csv"), "run-sine", "--kp", "5", "--kd", "0.1",
+                          "--amplitude", "0.02", "--period", "1", "--cycles", "2", "--ramp", "0.5")
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertIn('"disabled_confirmed": true', result.stdout)
+        with open(self.path/"sine.csv") as stream:
+            rows = list(csv.DictReader(stream))
+        trajectory = [r for r in rows if r["state_name"] == "sine"]
+        values = [float(r["reference_rad"]) for r in trajectory]
+        self.assertGreater(len(trajectory), 200)
+        self.assertGreater(max(values), 0.0198)
+        self.assertLess(min(values), -0.0198)
+        self.assertLessEqual(max(abs(v) for v in values), 0.02001)
+        # Group a sampled peak plateau; repeated device timestamps and micro-rad
+        # quantization must not create extra physical oscillation peaks.
+        groups = []
+        for row in trajectory:
+            if float(row["reference_rad"]) > 0.0198:
+                t = int(row["device_ms"])
+                if not groups or t-groups[-1][-1] > 100:
+                    groups.append([])
+                groups[-1].append(t)
+        peaks = [sum(g)/len(g) for g in groups]
+        self.assertEqual(len(peaks), 2, peaks)
+        self.assertAlmostEqual((peaks[1]-peaks[0])/1000, 1, delta=0.06)
+        self.assertIn("stopping", {r["state_name"] for r in rows})
+    def test_move(self):
+        self.server()
+        result = self.cli("run-move", "--kp", "5", "--kd", "0.1", "--offset", "0.02", "--duration", "0.5")
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertIn('"disabled_confirmed": true', result.stdout)
+    def test_no_motor_never_succeeds(self):
+        self.server("--no-motor")
+        result = self.cli("probe")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('ack_timeout', result.stdout+result.stderr)
+    def test_feedback_loss_latches_fault(self):
+        self.server("--simulate", "--drop-feedback-after-ms", "600")
+        result = self.cli("run-hold", "--kp", "5", "--kd", "0.1", "--hold-seconds", "3")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('feedback_timeout', result.stdout+result.stderr)
+    def test_host_lease_expires(self):
+        self.server()
+        transport = ctl.SocketTransport(self.sock)
+        client = ctl.Client(transport)
+        recorder = ctl.Recorder(None)
+        try:
+            client.call("hello")
+            client.call("config", 5000, 100, 500000, 2000, 200000, 60)
+            client.call("probe")
+            ctl.wait_state(client, recorder, {2}, 1)
+            client.call("enable")
+            ctl.wait_state(client, recorder, {4}, 1)
+            time.sleep(0.42)  # deliberately no heartbeat, no status requests
+            reply = client.call("status")
+            self.assertEqual((reply["state"], reply["fault"]), (9, 7))
+            self.assertFalse(reply["motor_status"] & 1)
+            self.assertTrue(client.call("diag")["feedback_fresh"])
+        finally:
+            transport.close()
+    def test_sigint_stops_and_disables(self):
+        self.server()
+        log_path = self.path/"interrupt.log"
+        with open(log_path, "w") as log:
+            process = subprocess.Popen([sys.executable, str(ROOT/"host/p85ctl.py"), "--transport", "socket",
+                                        "--socket", self.sock, "run-hold", "--kp", "5", "--kd", "0.1",
+                                        "--hold-seconds", "10"], stdout=log, stderr=subprocess.PIPE, text=True)
+            try:
+                deadline = time.monotonic()+3
+                while time.monotonic() < deadline:
+                    if '"state_name": "hold"' in log_path.read_text():
+                        break
+                    time.sleep(0.01)
+                else:
+                    self.fail("hold state not reached")
+                process.send_signal(signal.SIGINT)
+                _, err = process.communicate(timeout=5)
+                out = log_path.read_text()
+                self.assertEqual(process.returncode, 130, out+err)
+                self.assertIn('"disabled_confirmed": true', out, err)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.communicate()
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
