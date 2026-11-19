@@ -1,5 +1,5 @@
-/* Header/API checked on the board's installed 4.4.7 SDK. R0 build and runtime
- * validation still require the matching realtime_code_core0 SDK and libraries.
+/* Built in the public Hanhai V1.6 R0 firmware and checked with the board's
+ * installed 4.4.7 Linux headers/fake transport. Board execution is unverified.
  */
 #include "p85_bst_msgbox.h"
 #include <string.h>

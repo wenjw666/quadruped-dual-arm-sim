@@ -1,8 +1,24 @@
 # R 核源码、工具链与自行编译核查
 
-核查日期：2026-11-15（Asia/Tokyo）。结论：AURA/C1200 支持自行编译 R5 固件；已在本机 WSL 中完成官方裸机示例构建和 P85 便携核心的 R5 对象编译。当前仍未取得能重建 CAN/IPC 固件的完整 `realtime_code` 工程，未生成可部署的 P85 RELEASE 镜像。
+核查日期：2026-11-15（Asia/Tokyo）。结论：AURA/C1200 支持自行编译 R5 固件；已在本机 WSL 中完成官方裸机示例构建和 P85 便携核心的 R5 对象编译。后续复核发现 Gitee 上可匿名获取 R 核工程及其清单所列依赖，并已在 WSL 完成公开 V1.6 R0 基线及 P85 集成固件的完整编译和签名包生成；后续试烧可成功写入，但 Linux 软件重启后 R0 加载区仍是原固件，已回退，兼容性仍未验收。最新命令、哈希和验收边界见 [P85 完整构建](R0_BUILD.md)。
 
 本次读取官网、附件和已有 Flash 备份，在隔离的本地输出目录执行编译。附件中的烧录、启动或电机指令只作为技术资料审阅，没有执行。
+
+## 2026-11-15 补充：发现公开的 R 核工程仓库
+
+此前仅检查官网软件下载页、SDK Manager 和 sesameX GitHub，遗漏了 Gitee 的 Hanhai BSP 仓库。原先“没有找到完整 R 工程”的结论已过时，应予更正。公开清单仓库 `https://gitee.com/hanhai-bsp/rt-manifest` 的 README 说明用 repo 获取六个 R 核工程；`C1200SW_V1.6_RC0930` 清单 `realtime_freertos_core0.xml` 列出了 19 个应用、HAL、MCAL 配置、OS、BSW 和中间件仓库，本次已按各清单指定分支匿名克隆全部 19 个仓库到 `output/p85_r_core_reading/hanhai-v16-core0/`。这些源码均是第三方材料，适用各自仓库的许可证。
+
+应用 `rt_appl/user/can_app/CanApp.c` 含 `Can_Write` 示例；BSW 内包含 x86-64 Linux IDL 生成器；R0 应用仓库 `tools/` 包含 `sign_package_open` 和随附的签名材料。存在这些文件并不代表它们一定能生成当前板可接受的签名固件，也不能保证现成的 CAN 配置适合 P85 或板端接线。
+
+公开 V1.6 R0 基线已在 WSL 的隔离副本中用 ARM GNU 12.2 和 GNU Make 4.3 构建。Windows 检出的 shell 脚本换行在隔离副本中转换为 LF，未经任何板端操作。确认 ELF 链接、objcopy 和签名程序均实际完成，生成：
+
+- `realtime_freertos_core0.bin`：507680 字节，SHA-256 `32470bd88c68dc9b911a3a8381f92740d400cf77d76f64d151ff2250ea762594`。
+- `BST-REALTIME0-RELEASE-C1200-1-3-0.bin`：1048576 字节，SHA-256 `cb974865667aa16c7c7ac43329df0d88c00b87b555940df88481dc823328341f`。
+- 构建日志和镜像保存在 `output/p85_r_core_reading/hanhai-v16-build.log` 和同目录；链接出现 newlib 未实现系统调用及 RWX 段警告。构建脚本在未使用 repo 管理时跳过 `version_control` 生成；不能仅凭脚本退出码判断构建成功。
+
+这仅验证原厂基线能够生成签名文件，不能证明签名密钥、镜像版本和当前板卡兼容，也不证明电机控制功能已经实现；未烧录、运行或连接电机。
+
+另发现 V1.7、V1.8 分支；需注意检查所选 manifest 文件本身的 default revision，不能根据 manifest 分支名假设全部项目自动使用同名分支。当前已克隆的 V1.6 工程不是已确认与板上 V2.0.1 匹配的 SDK，必须核对版本、镜像和运行环境后才能考虑刷写。以下旧记录保留当时检查范围以便追溯，其中关于尚未找到完整底座的表述仅描述补充发现之前的状态。
 
 ## 官网实际提供了什么
 
@@ -13,7 +29,7 @@
 - 工具为 `arm-none-eabi-gcc` 10.x 及以上、GNU Make 3.81 及以上、bash 4.0 及以上。
 - `make.sh` 先调用 `bst_idl_code_gen`，再通过 `make_bstrtos.sh` 生成 `librtos.a`、`libthread.a`，编译 ELF/BIN/HEX，最后调用 `sign_package_open` 生成 RELEASE 镜像。
 
-官方全量构建入口如下，**此命令尚未在完整 R 工程上执行**：
+官方指南给出的 SDK 全量构建入口如下。补充发现的 Gitee V1.6 工程已在隔离环境执行 `bash ./make.sh -j4`；两套源码的版本对应关系尚未验证：
 
 ```sh
 cd realtime_code_core0
@@ -132,15 +148,15 @@ python3 /mnt/d/20261022ubunturos_win/firmware/p85/tools/check_r5_compile.py \
 | RT4 | `0xF00000` | `0x100000` | `0x04400000` |
 | RT5 | `0x1000000` | `0x100000` | `0x04500000` |
 
-这些值同时得到附件刷写脚本和新找到的官方 R 核开发指南支持。此前“偏移仅来自旧示例、布局未核实”的结论已过时；现在有当前板备份的配置依据。但布局一致不证明任意 BIN 的签名、版本和兼容性正确，本次没有执行擦除、写入或重启。
+这些值同时得到附件刷写脚本和新找到的官方 R 核开发指南支持。此前“偏移仅来自旧示例、布局未核实”的结论已过时；现在有当前板备份的配置依据。但布局一致不证明任意 BIN 的签名、版本和兼容性正确；布局核查时尚未写入，后续试烧及回退结果见 [实板部署记录](R0_DEPLOYMENT.md)。
 
-## 要完成 P85 R0 固件还需要什么
+## P85 完整接入已完成，剩余为上板验收
 
-应补齐与板上 `V2.0.1_20260813-185450_276175` 相容的 **`opensource_code/realtime_code.zip`**，包括 `realtime_code_core0`、RTOS 构建入口、MsgBox、CAN MCAL/CanIf/时钟配置，并取得其构建所需的 `bst_idl_code_gen` 和 `sign_package_open` 等工具。工具的具体相对位置以完整包为准，不能只复制一个 Makefile 或现成 BIN。
+此前提出的“缺完整底座和 IDL/签名依赖”已通过公开 V1.6 manifest 工程解决。本轮接入了 FreeRTOS 任务、真实 MsgBox 接收队列、CAN0 配置与反馈入口，从新目录完整构建并生成含 P85 的签名包；源码、命令、内存和哈希见 [完整构建记录](R0_BUILD.md)。本页早期对象编译/下载扫描章节保留检索历史，不代表当前仍只能编译便携对象。
 
-取得后先原样构建基线，确认可重复生成签名发布镜像，再按 `../rt0/PORTING.md` 接入现有 P85 核心，借鉴达妙补丁的任务与 CAN 入口，完成 1 Mbps/5 Mbps FD+BRS、真实 RX 元数据、OFF 状态 A/R 握手，最后才进入 CAN 链路和电机调试。
+当前剩余是核对 V1.6 底座与板上 V2.0.1 BSP 的实际互通、启动签名和恢复流程，随后部署并先验证 OFF 状态的 A/R 握手，再做 CAN 分析仪与实物电机验收。后续已完成一次试烧、回读和 Linux 重启，但 R0 SRAM 仍载有原固件；已完整回退。不能由此声称新镜像已启动，也不能从签名包生成推断板端接受或电机可用。详见 [实板部署记录](R0_DEPLOYMENT.md)。
 
-在这条官方流程中，可以在本机 Linux/WSL 编译，经网线 SCP/SFTP 将签名镜像传到板上，再通过 SSH 执行已核对的局部刷写流程，重启后生效。FlashTool 是另一条官方方式，需要其 USB/串口接线。当前已具备网线/SSH 和本机 R5 编译能力，阻塞点是完整 CAN/IPC 工程及发布签名依赖。
+Linux/WSL 编译，经网线 SCP/SFTP 将签名包传至板上，再通过 SSH 完成核对后的局部刷写是可用部署路径；FlashTool 是另一条官方路径，需要 USB/串口接线。相关部署资料见 [R0 写入流程](R0_FLASHING.md)。
 
 ## 来源与本地证据
 

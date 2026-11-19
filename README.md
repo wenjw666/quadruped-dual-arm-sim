@@ -11,7 +11,7 @@ B2 · 双 Aubo A3 · Robotiq 2F-85 · ROS 2 Humble
 ![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-2563eb?style=flat-square)
 ![版本](https://img.shields.io/badge/版本-v0.2.0工程基线-8b5cf6?style=flat-square)
 
-[效果展示](#仿真效果演示) · [开始部署](#快速开始) · [系统架构](#ros-2-节点网络) · [验证记录](#验证记录)
+[效果展示](#仿真效果演示) · [开始部署](#快速开始) · [系统架构](#ros-2-节点网络) · [验证记录](#验证记录) · [P85 实板开发](firmware/p85/README.md)
 
 <a href="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/physical-pick-place.mp4">
   <img src="https://github.com/wenjw666/quadruped-dual-arm-sim/blob/main/media/readme/hero-task.gif?raw=true" width="960" alt="实际仿真动图：夹爪接触抓取、RL 携物行走、目标台放置；5倍速回放" />
@@ -22,6 +22,25 @@ B2 · 双 Aubo A3 · Robotiq 2F-85 · ROS 2 Humble
 [▶ 观看抓放视频](media/readme/physical-pick-place.mp4) · [原速完整录像 · 122 秒](Videos/physical-pick-carry-place-validated.mp4) · [实现与验收](PHYSICAL_PICK_PLACE.md)
 
 </div>
+
+## 本分支的 P85 实板控制开发
+
+开发分支 `codex/p85-rt0-motor-control` 增加 AURA/C1200 的 P85MAX-S 单电机 R 核控制基础工程，作为四足底盘电机控制的起点。Linux A 核通过 MsgBox 下发任务，R0 以 10 ms 周期处理控制和 CAN FD 收发；工程位于 [`firmware/p85/`](firmware/p85/README.md)。
+
+**2026-11-19 已通过 CANFD0 ↔ CANFD1 的真实双向物理通信验证，真实 P85 电机尚未接入验收。**
+
+| 本轮检查 | 结果 |
+| --- | --- |
+| R0/R2 配套固件 | SRAM 内容匹配，R2 心跳推进，R2 释放 CAN1 |
+| CAN0 内部回环 | 512 帧通过 |
+| 外部 CAN0→CAN1 / CAN1→CAN0 | 各 512 帧，发送确认与对端接收完整，错误和超时为 0 |
+| CAN FD 参数 | 仲裁 1 Mbps / 数据 5 Mbps，FD+BRS，每方向 16 种长度各 32 帧 |
+| 真实 A/R 会话 | HELLO + 25 轮 STATUS/DIAG 通过，保持 OFF、fault=0 |
+| 诊断结束状态 | 自动恢复原 Flash，64 MiB 读回与基线一致；本轮候选未设为常驻固件 |
+
+完整过程已写入 [P85 README：开发与调试全过程](firmware/p85/README.md#开发与调试全过程)，涵盖附件与 SDK 核查、协议及 R0 接入、交叉编译与签名、Flash 布局和回退、冷启动与串口诊断、内部回环 TDC 修复、缓存一致性、R0/R2 CAN1 冲突、配套固件及最终成功证据。
+
+实测细节见 [物理链路记录](firmware/p85/docs/PHYSICAL_CAN_VALIDATION.md)，R2 构建见 [CAN1 释放固件说明](firmware/p85/docs/R2_CAN1_HANDOFF.md)。验收结束时 SRAM 仍运行诊断候选，Flash 已恢复为此前的内部回环 v3 基线，再次完整上电会加载基线。真实电机反馈、使能和位置控制仍待下一阶段验证。
 
 ## 仿真效果演示
 
@@ -234,6 +253,8 @@ src/
 
 ## 验证记录
 
+- [P85 R 核控制开发与完整调试过程](firmware/p85/README.md)
+- [CANFD0 ↔ CANFD1 实板双向收发验收](firmware/p85/docs/PHYSICAL_CAN_VALIDATION.md)
 - [v0.2.0 工程基线与恢复验证](docs/RELEASE_V0.2.0.md)
 - [决策反馈闭环记录](DECISION_LOOP_DEMO.md)
 - [建图与导航演示记录](NAVIGATION_MAPPING_DEMO.md)

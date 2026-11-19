@@ -1,0 +1,56 @@
+{
+  "manifest": "https://gitee.com/hanhai-bsp/rt-manifest.git",
+  "branch": "C1200SW_V1.6_RC0930",
+  "variant": "R2 releases hardware CAN1 to R0; CAN2/3 unchanged",
+  "projects": [
+    {
+      "name": "hanhai-bsp/rt-app-core2",
+      "path": ".",
+      "revision": "883fd4987e50394fd9fb6a7cfddd78db698b772c"
+    },
+    {
+      "name": "hanhai-bsp/rt-hal-core2",
+      "path": "rt_hal",
+      "revision": "7b1eee6b61e71a09162c1a26383c734214da97e5"
+    },
+    {
+      "name": "hanhai-bsp/rt-mcal-cfg-core2",
+      "path": "rt_hal/config/mcal_cfg",
+      "revision": "b14d4f14004ae362362fcc225c5277a97cc710db"
+    },
+    {
+      "name": "hanhai-bsp/bsw",
+      "path": "bsw",
+      "revision": "108c4597b5122181b6479f51610e9dcb27a2b73b"
+    },
+    {
+      "name": "hanhai-bsp/os",
+      "path": "bsw/os",
+      "revision": "64b0d2c77965fe1e8a11413503570bf8b756f8ba"
+    },
+    {
+      "name": "hanhai-modules/hrt-os-adapt",
+      "path": "rt_hal/config/os_cfg/os_adapt",
+      "revision": "d721485edc558baa3e3a0bb6e4511f2d681b40c4"
+    },
+    {
+      "name": "hanhai-modules/rt-radar-task",
+      "path": "rt_appl/user/radar_app",
+      "revision": "20d338a57a9c5b4a3edfa3721b2dce337dac2782"
+    },
+    {
+      "name": "hanhai-modules/rlog",
+      "path": "rt_appl/user/rlog_app",
+      "revision": "420d3ab69f3f8aaec54713663b771515d7b428d1"
+    }
+  ],
+  "source_sha256_lf": {
+    "Makefile": "d85c0651c92a1db451570dd9533a7e3f83cc1a7904448d0342b01a3d9ce75d7c",
+    "make.sh": "9830ae3629a253afa9e077802a196b2115aabfcbd85f0739a3d1e24a44075b29",
+    "rt_appl/user/main.c": "3f9c7d4268477b70d144ba8c12df3e8ec9cd4769b2ca8de949b6e1969df3326d",
+    "rt_appl/user/can_app/CanApp.c": "67e628b5f6b447d1b963937cff3f4c1689e961e82183bb74900b9677f65c5d48",
+    "rt_appl/test/user_cmd_list.c": "95d83ebe0f9ab1cfcd77f066bbd545fc8b4d1d7edce79566cc9cf8e7cc599205",
+    "rt_hal/config/mcal_cfg/output/src/Can_PBcfg.c": "090d3cdaa85fecffb1a9b6310a81317bbd04a3205637e9f60b0e00bbdac7edda",
+    "rt_hal/config/inter_cfg/isr.cfg": "11370ea5294261bc288daf13c9821ff581977d76266d8ec1572bd4403b596e31"
+  }
+}

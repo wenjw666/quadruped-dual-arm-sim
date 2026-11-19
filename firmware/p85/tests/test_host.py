@@ -3,6 +3,8 @@
 import csv
 import importlib.util
 import json
+import os
+import struct
 from pathlib import Path
 import signal
 import subprocess
@@ -17,6 +19,28 @@ sys.argv = [sys.argv[0], *sys.argv[2:]]
 spec = importlib.util.spec_from_file_location("p85ctl", ROOT/"host/p85ctl.py")
 ctl = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ctl)
+
+class ClientExchangeTest(unittest.TestCase):
+    def test_sigint_finishes_inflight_exchange(self):
+        class InterruptedTransport:
+            completed = False
+            interrupt = True
+            def exchange(self, request):
+                if self.interrupt:
+                    self.interrupt = False
+                    os.kill(os.getpid(), signal.SIGINT)
+                self.completed = True
+                seq = struct.unpack_from("<H", request, 6)[0]
+                return struct.pack("<4sBBHBBBBIiiii", b"P85R", 1, 0x80, seq,
+                                   0, 4, 0, 1, 100, 0, 0, 0, 0)
+        transport = InterruptedTransport()
+        client = ctl.Client(transport)
+        with self.assertRaises(KeyboardInterrupt):
+            client.call("heartbeat")
+        self.assertTrue(transport.completed)
+        self.assertEqual(client.last["state"], 4)
+        self.assertEqual(client.call("status")["state"], 4)
+
 
 class EndToEnd(unittest.TestCase):
     def setUp(self):

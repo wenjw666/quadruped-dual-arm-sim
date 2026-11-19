@@ -1,6 +1,6 @@
 # R0 示例审阅与固件写入流程
 
-审阅及更新日期：2026-11-15（Asia/Tokyo）。没有执行附件烧录脚本、擦写 Flash 或重启目标板。资料中的部署命令作为技术资料审阅。随后找到的官方 R 核开发指南、实际 R5 编译结果和板载 DTB 布局证据见 [源码与编译核查](R0_SDK_FINDINGS.md)。
+更新：2026-11-19：整板重新上电后，R0 physical-v6 与 R2 CAN1 release-v2 已在实板执行，CANFD0 ↔ CANFD1 双向物理通信通过，每方向 512 帧、共 1024 帧，仲裁 1 Mbps / 数据 5 Mbps、FD+BRS，16 种长度各 32 帧，错误与超时均为 0。CAN0 内部回环另通过 512 帧。R2 镜像匹配、CAN1 inactive、心跳推进，真实 MsgBox HELLO 加 25 轮 STATUS/DIAG 通过，保持 OFF/fault=0、电机发送计数为 0。诊断采集器已按预设恢复原 R0/R2 Flash 并通过整片校验；当前 SRAM 仍运行候选，下次完整上电加载已恢复的基线。真实电机尚未接入验收。 最新事务、恢复与证据见 [实板部署记录](R0_DEPLOYMENT.md) 和 [物理链路记录](PHYSICAL_CAN_VALIDATION.md)。下文早期审阅中的设备状态按对应阶段解读。附件脚本未直接执行，资料中的命令不作为额外授权。
 
 ## 示例包含什么
 
@@ -50,7 +50,7 @@ sudo ./make.sh
 # 输出：out/BST-REALTIME0-RELEASE-C1200-1-3-0.bin
 ```
 
-该脚本依次生成 IDL、构建 RTOS 库、编译主工程并签名。烧录应使用 `BST-REALTIME0-RELEASE-*.bin`，不能使用未签名的 `realtime_freertos_core0.bin`。这里只在具备完整 SDK 和其规定的构建/签名依赖时适用；当前尚未构建完整 P85 固件。本仓库 CMake 是 Linux 验证构建；`tools/check_r5_compile.py` 只生成 R5 对象/静态库；在 A 核用 gcc 编译 `acore_msgbox_ipc.c` 也不会更新 R 核。
+该脚本依次生成 IDL、构建 RTOS 库、编译主工程并签名。烧录应使用 `BST-REALTIME0-RELEASE-*.bin`，不能使用未签名的 `realtime_freertos_core0.bin`。这里只在具备完整 SDK 和其规定的构建/签名依赖时适用；本工程已完成该完整构建，见 [构建记录](R0_BUILD.md)。本仓库 CMake 是 Linux 验证构建；`tools/check_r5_compile.py` 只生成 R5 对象/静态库；在 A 核用 gcc 编译 `acore_msgbox_ipc.c` 也不会更新 R 核。
 
 ## 实验脚本的写入方式
 
@@ -61,7 +61,7 @@ sudo ./make.sh
 - 参数最后的 `0` 是 RT0 核编号，脚本据此选择偏移。
 - 脚本没有拒绝大于 1 MiB 的镜像，也没有验证镜像版本、格式、签名或板型；MD5 回读仅说明写入字节一致。实际写入前必须核实布局与镜像兼容性。
 
-官方及实验中的烧录命令形式如下。它要求先有匹配且经过签名的 RELEASE 镜像；**当前尚无本工程可部署的 P85 镜像，本次没有执行该命令**：
+官方及实验中的烧录命令形式如下。它要求先有匹配且经过签名的 RELEASE 镜像；**这是早期示例审阅时记录的通用命令；当前已生成并部署本工程签名固件，应使用固定事务 guard 和实际哈希**：
 
 ```sh
 sudo bash flash_R_bin.sh BST-REALTIME0-RELEASE-C1200-1-3-0.bin 0
@@ -83,11 +83,13 @@ sudo bash flash_R_bin.sh BST-REALTIME0-RELEASE-C1200-1-3-0.bin 0
 
 通用页面不等于已经验证可以把 sample 中单独的旧 BIN 直接作为 FlashTool 镜像压缩包使用。本次不执行整片擦除、全量刷机或忽略签名验证等与当前任务无关的操作。
 
-## 对 P85 工程的下一步
+## P85 构建与历史重载限制
 
-示例有用，但没有补齐完整 R SDK。工具链已经安装并完成 R5 编译验证；仍需取得与当前 BSP 兼容的 `opensource_code/realtime_code.zip` 及其 IDL/RTOS/签名依赖。若要重建附件原 IPC 示例，还需 `acore_ipc_server.c`；实现本工程服务则按已有 P85 MsgBox 适配器接入。
+公开 Gitee V1.6 R0 工程、IDL 和签名工具已用于本工程完整构建，最终包含 P85 的签名包已生成，详见 [构建记录及哈希](R0_BUILD.md)。该包与附件同名，但功能和哈希不同，部署时必须核对实际文件，不能用附件 IPC/DM 示例替代。
 
-之后按照 `../rt0/PORTING.md` 接入现有 P85 核心。先构建并验证不发 CAN 的 OFF 状态 A/R 握手，再配置 1 Mbps/5 Mbps FD+BRS、核验真实 RX 元数据并进行 CAN 分析仪测试。官网 CAN 演示的默认 500 kbps/1 Mbps 不能直接用于 P85。
+板级接入实现见 `../rt0/PORTING.md`。以下为 11 月 16 日重载诊断历史，当前部署进展见文首：CAN0 两层配置已改为 1/5 Mbps、FD+BRS，默认 OFF 不发 CAN；寄存器回读不等于实际波形通过。已试烧并重启 Linux，但只读 SRAM 对比证明本次 R0 加载区仍是原固件。不能由此判断新 P85 初始化/CAN 门控失败，也尚未验证 V1.6 与当前 V2.0.1 BSP 的启动/IPC 互通。当前 Flash 已回退至原始备份。下一轮应重新写入并验证整板冷启动是否加载新镜像，保留 R0 启动日志；单纯重启当前已回退的板不会启动 P85。
+
+部署前核对启动签名、槽位和恢复通道；部署后先验证 R0 日志/只读状态命令及 OFF 状态 A/R 握手，再进行 CAN 分析仪和电机调试。此前只读 Flash 备份及布局证据见 `VALIDATION.md` 与 `R0_SDK_FINDINGS.md`。
 
 ## 来源与留档
 

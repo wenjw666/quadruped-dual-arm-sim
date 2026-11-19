@@ -14,6 +14,7 @@
 #define P85_CMD 0x85u
 static uint8_t handle;
 static bool opened;
+static int online_state;
 static void *mapped_queue;
 static serdes_t outgoing;
 static uint64_t now_ms(void) {
@@ -27,16 +28,19 @@ int p85_ipc_open(void) {
  if(ret!=0)return ret;
  ret=ipc_trans_layer_mmap_session(P85_CPU,handle,&mapped_queue);
  if(ret!=0||!mapped_queue) {ipc_trans_layer_destroy_handle(P85_CPU,handle);return ret?ret:-1;}
+ online_state=ipc_trans_layer_query_info(P85_CPU,handle,0,1);
  opened=true;return 0;
 }
 int p85_ipc_online(void) {
  if(!opened)return -1;
- return ipc_trans_layer_query_info(P85_CPU,handle,0,1);
+ /* The user-side query reports a one-shot endpoint transition. Cache it
+  * at open; repeating it after HELLO returns -1 even while RT0 remains up. */
+ return online_state;
 }
 int p85_ipc_exchange(const uint8_t *request,uint8_t *reply,int timeout_ms) {
  rw_msg_t received;uint64_t stamp,deadline;int ret;
  if(!opened||!request||!reply||timeout_ms<1||timeout_ms>1000)return -1;
- if(p85_ipc_online()!=2)return -404;
+ if(online_state!=2)return -404;
  memset(&outgoing,0,sizeof(outgoing));ipc_ser_init(&outgoing);
  outgoing.header.pid=P85_CPU;outgoing.header.cid=P85_RT0;
  outgoing.header.fid=P85_FID;outgoing.header.sid=P85_SID;
@@ -64,5 +68,5 @@ int p85_ipc_exchange(const uint8_t *request,uint8_t *reply,int timeout_ms) {
  return -110;
 }
 void p85_ipc_close(void) {
- if(opened){ipc_trans_layer_destroy_handle(P85_CPU,handle);opened=false;mapped_queue=NULL;}
+ if(opened){ipc_trans_layer_destroy_handle(P85_CPU,handle);opened=false;online_state=-1;mapped_queue=NULL;}
 }

@@ -7,6 +7,7 @@ import fcntl
 import json
 import math
 import os
+import signal
 from pathlib import Path
 import socket
 import struct
@@ -77,6 +78,16 @@ class Client:
         self.sequence = int.from_bytes(os.urandom(2), "little")
         self.last = None
     def call(self, operation, *arguments, check=True):
+        # Finish the request/reply pair before Ctrl-C starts STOP/DISABLE.
+        # Otherwise the next exchange can consume the interrupted reply and
+        # fail sequence validation instead of confirming motor shutdown.
+        previous = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
+        try:
+            return self._call(operation, *arguments, check=check)
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous)
+
+    def _call(self, operation, *arguments, check=True):
         self.sequence = (self.sequence + 1) & 65535
         request = struct.pack("<4sBBH6i", b"P85C", 1, OPS[operation], self.sequence,
                               *(list(arguments) + [0] * (6 - len(arguments))))

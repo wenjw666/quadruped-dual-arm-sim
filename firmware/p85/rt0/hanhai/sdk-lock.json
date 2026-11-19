@@ -1,0 +1,115 @@
+{
+  "manifest": "https://gitee.com/hanhai-bsp/rt-manifest.git",
+  "manifest_branch": "C1200SW_V1.6_RC0930",
+  "projects": [
+    {
+      "name": "hanhai-bsp/rt-app-core0",
+      "path": "realtime",
+      "revision": "036306d61fac2bbf2cc97f527c13e78711663e27"
+    },
+    {
+      "name": "hanhai-bsp/rt-hal-core0",
+      "path": "realtime/rt_hal",
+      "revision": "5fe6f9add9a2256cfa097b323ba47232a6559ccf"
+    },
+    {
+      "name": "hanhai-bsp/rt-mcal-cfg-core0",
+      "path": "realtime/rt_hal/config/mcal_cfg",
+      "revision": "7959d4a00b2dffefdf73f5f0641fd72074bb59e3"
+    },
+    {
+      "name": "hanhai-bsp/os",
+      "path": "realtime/bsw/os",
+      "revision": "64b0d2c77965fe1e8a11413503570bf8b756f8ba"
+    },
+    {
+      "name": "hanhai-bsp/bsw",
+      "path": "realtime/bsw",
+      "revision": "108c4597b5122181b6479f51610e9dcb27a2b73b"
+    },
+    {
+      "name": "hanhai-modules/hrt-os-adapt",
+      "path": "realtime/rt_hal/config/os_cfg/os_adapt",
+      "revision": "d721485edc558baa3e3a0bb6e4511f2d681b40c4"
+    },
+    {
+      "name": "hanhai-modules/rlog",
+      "path": "realtime/rt_appl/user/rlog_app",
+      "revision": "420d3ab69f3f8aaec54713663b771515d7b428d1"
+    },
+    {
+      "name": "hanhai-modules/libgsm",
+      "path": "realtime/rt_appl/user/gsm_app",
+      "revision": "1c1e9eac8ecb97d40dd39d6cceca5ddcb49588c9"
+    },
+    {
+      "name": "hanhai-modules/timesync_r5",
+      "path": "realtime/rt_appl/user/timesync_app",
+      "revision": "42d32d53f0574e10618a628441eaf13bc5587cc1"
+    },
+    {
+      "name": "hanhai-modules/infra-time-r5",
+      "path": "realtime/rt_appl/user/infratime_app",
+      "revision": "e8b6e378d3451497b8b39593ea88ce316f6ab3a1"
+    },
+    {
+      "name": "hanhai-modules/middleware-common",
+      "path": "realtime/bsw/middleware",
+      "revision": "d123c7d741524ac763b27d3aac1a3cef5f53b032"
+    },
+    {
+      "name": "hanhai-modules/ethif",
+      "path": "realtime/bsw/middleware/communication/EthIf",
+      "revision": "a7a22ce55248ed9a06a3e2b5ab22b32245f5666a"
+    },
+    {
+      "name": "hanhai-modules/lwip",
+      "path": "realtime/bsw/middleware/communication/Lwip",
+      "revision": "15fd5d193345e2b436549fdafe0172b50ffe03ec"
+    },
+    {
+      "name": "hanhai-modules/lwip-test",
+      "path": "realtime/rt_appl/test/lwip_test",
+      "revision": "1effbb7c11942790055dc7509af87d33430bc3c1"
+    },
+    {
+      "name": "hanhai-modules/rt-tsn-conf-server",
+      "path": "realtime/rt_appl/user/tsnconf_server",
+      "revision": "07fd6cab34c0fd5184dbce022806cf1522fed667"
+    },
+    {
+      "name": "hanhai-bsp/tsn-example-rt",
+      "path": "realtime/rt_appl/user/tsndemo_app",
+      "revision": "1bb38022f88a6b33020c6699af1b3410e422d278"
+    },
+    {
+      "name": "hanhai-bsp/freertps",
+      "path": "realtime/bsw/middleware/communication/freertps",
+      "revision": "afb32acd4d1c6781edcabcf449285c334b31573b"
+    },
+    {
+      "name": "hanhai-bsp/micro-cdr",
+      "path": "realtime/bsw/middleware/communication/micro-cdr",
+      "revision": "50270f070348c9092df50f6c81a7880547c6e5fd"
+    },
+    {
+      "name": "hanhai-bsp/socket-demo",
+      "path": "realtime/rt_appl/user/socket_demo_app",
+      "revision": "baac8b5fb05e0d3773db1ce087470231a4349cee"
+    }
+  ],
+  "source_sha256_lf": {
+    "Makefile": "d154bbed5633e7e8bf0340cdf63fa990fa45d2a1676efce90b10e2137e4c4a4a",
+    "make.sh": "3ac4071425cfb50ffa2331311d1d84280f36a0bc8b0ba7621db6aadb82d4e35d",
+    "rt_appl/user/bsw_app/BswInit.c": "3ee40e4d1138e21193497bc8dcb03167f93de119ed65b7e521f8d5a785145d56",
+    "rt_appl/test/user_cmd_list.c": "2de6d7f4a07f5fada6618c3564ddfde71b62a0f736a1c7d0082e8cdc965a3eb8",
+    "bsw/mcal/canif/src/CanIf.c": "08bd2582a0c3dc6c3326637c08ee2fd470148d9693e71402e5b26e8228ab1865",
+    "rt_hal/config/mcal_cfg/output/src/Can_PBcfg.c": "79184d67106726be0fe6ff882a35761509b3d9e85a786d37a6e919bcad7631a5",
+    "rt_hal/config/mcal_cfg/output/src/FlexCAN_Ip_PBcfg.c": "810915651164a1e934376efd84c0d4f7302d0686ad423d8b050911caafae7f46",
+    "rt_hal/config/os_cfg/FreeRTOSConfig.h": "2b97b1f3adf99d1ea880600bc30190d6234a2c055ca314bc8aef0416ef668d94",
+    "bsw/mcal/can/src/Can_Ipw.c": "e877a1b08150cde207441965ac5180b096f532ee7f9a0b08fdc02917825150da",
+    "rt_hal/config/inter_cfg/isr.cfg": "a44b1ca3fdf3734a488df937118ee03ff37b7d655911ee2171b9d6cdbc005c96",
+    "bsw/mcal/can/src/Can_Irq.c": "5e48a13d30ae9640f4533f859307d1aa477104265e23cbd5d60d794ce3e328ba",
+    "bsw/mcal/can/src/FlexCAN_Ip.c": "a194d3ed45972bdefe9fb28d24be55205ba8adee466e968fd485d43dbc5e40d6"
+  }
+}

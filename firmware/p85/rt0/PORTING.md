@@ -1,19 +1,14 @@
-# 接入匹配的 R0 工程
+# P85 在 Hanhai C1200 R0 的接入
 
-此文件是接入说明，**不是已完成的板级实现**。`p85_runtime.c` 可移植，两个厂商适配器仍需与实际 R SDK 一起编译、链接和上板验证。Linux 上对官方头文件的编译成功不证明 R0 ABI、库或驱动可用。
+2026-11-16：已完成公开 Hanhai V1.6 R0 工程的板级接入、完整链接和签名包生成。实现位于 `hanhai/`，由 `../tools/prepare_hanhai_sdk.py` 应用到隔离 SDK 副本。当前板的 BSP 为 `V2.0.1_20260813-185450_276175`；已试烧并重启 Linux，后续 Safety 核复位请求也未观察到新镜像加载；R0 SRAM 仍是原镜像，P85 服务未通过握手；当前已恢复原 Flash。下一步是重新部署后的整板冷启动和日志核对，版本互通、启动校验、实际调度和 CAN 电气时序仍待验收。详见 [实板部署记录](../docs/R0_DEPLOYMENT.md)。
 
-## 当前缺少的输入
+完整构建命令和产物见 [R0 构建记录](../docs/R0_BUILD.md)。Linux CMake 仅用于软件验证，不生成 R0 固件。
 
-1. 与板上 `V2.0.1_20260813-185450_276175` 相容的 `realtime_code_core0` 源码和所需库，包含启动、链接脚本、RTOS、MsgBox、CAN MCAL、CanIf 配置和时钟配置。
-2. 与完整 SDK 匹配的浮点/枚举 ABI、构建脚本及 IDL/签名依赖。本机 ARM 12.2 工具链已经可用，裸机示例和 P85 四个便携源文件已交叉编译；还没有链接完整 CAN/IPC 固件。完整包名为 `opensource_code/realtime_code.zip`，详见 `../docs/R0_SDK_FINDINGS.md`。
-3. 拟部署镜像的启动校验/签名、版本兼容性及恢复流程。当前板只读备份中的 SBL DTB 与本地 V2.0.1 对应文件哈希相同，已确认配置为 RT0 Flash `0xB00000`、容量 1 MiB、SRAM `0x04000000`；这尚不证明任意镜像可用。
-4. CAN0 实际 HTH、RxPduId 到仲裁 ID 的传递、时钟和 TDC 配置、载板版本及收发器控制。
+## 固定底座和构建单位
 
-使用 SDK 2.1.0 材料时仍需确认其与当前 2.0.1 BSP 的兼容性。当前所有板上改动限于 `/home/bst/p85_control` 和仿真记录；Flash 只读备份已完成。
+使用 Gitee `rt-manifest` 的 `C1200SW_V1.6_RC0930` / `realtime_freertos_core0.xml`。`hanhai/sdk-lock.json` 记录全部 19 个项目的实际 commit，以及 8 个被修改 SDK 文件的 LF 归一化 SHA256。接入脚本检查各项目 HEAD 和这些源文件哈希，遇到其他版本即停止，避免将补丁静默套到不同 SDK。HEAD 检查不等同于验证所有工作区文件未被改动，应保留原始检出作为输入。
 
-## 构建单位
-
-将以下源文件加入 R0 工程，加入 `include/`、`rt0/` 头文件路径：
+SDK 工程实际使用 Cortex-R5、ARM 指令集、hard-float、VFPv3-D16 和 small enum ABI，P85 沿用相同编译配置并链接 libm。不要将早期 soft-float 探测归档混入固件。
 
 ```text
 src/p85_protocol.c
@@ -22,101 +17,70 @@ src/p85_wire.c
 rt0/p85_runtime.c
 rt0/p85_bst_msgbox.c
 rt0/p85_mcal_tx.c
+rt0/hanhai/p85_board.c
+rt0/hanhai/p85_hanhai_msgbox.c
 ```
 
-核心要求 C99、32 位 `uint32_t`、IEEE 单精度浮点和数学库（`sinf/cosf/fabsf/floor/round/isfinite`）。核查 SDK 的浮点 ABI、FPU 上下文保存、数学库链接和栈水位。控制核心不分配堆内存；`p85_runtime`、MsgBox serializer 应静态分配。库对同一实例不提供跨核心并发控制。
+接入启用 SDK `CLEAN_MODE=1`，关闭网络/时间同步演示，移除 CAN/VCan 应用任务和 CAN 测试 shell 入口。精简模式下排除仍引用完整网络应用的 GMAC/VLAN 测试源文件。CAN MCAL、底层虚拟 CAN 支持和必要 IPC 服务仍保留；这不是删除所有原厂系统任务的最小固件。
 
-## 初始化和任务所有权
+## 初始化、周期任务和所有权
 
-使用一个静态 `p85_runtime`，由唯一控制任务调用 `p85_runtime_step`。初始化先建立所有 port 回调，再创建 MsgBox 服务并启动生产者，最后运行 10 ms 周期任务。默认配置 ID3，增益尚未设置，启动状态 OFF 不发送 CAN。
+SDK `main` 初始化 CAN/IPC 后，`BswInit.c` 的 `StartupTask` 调用 `p85_board_create_tasks()`。静态控制任务 `P85_CTRL` 优先级 5、栈 1536 words，调用 `portTASK_USES_FLOATING_POINT()` 保存浮点上下文；接收任务 `P85_IPC` 优先级 4、栈 1024 words。这些栈大小尚须通过实际栈水位验收。
 
-```c
-/* 结构示意；board_* 必须由匹配 BSP 实现，此段不能独立编译。 */
-static p85_runtime motor;
-p85_config cfg;
-p85_port port = {
-    .context = &board_context,
-    .lock = board_lock_and_save_interrupt_state,
-    .unlock = board_restore_interrupt_state,
-    .can_send = p85_mcal_send,
-    .reply = p85_bst_msgbox_reply
-};
-p85_default_config(&cfg, 3);
-if (!p85_runtime_init(&motor, &cfg, &port, board_monotonic_ms())) {
-    board_report_init_failure();
-}
-if (p85_bst_msgbox_open(&motor) != 0) {
-    board_report_init_failure();
-}
-/* 周期任务：p85_runtime_step(&motor, board_monotonic_ms()); */
-```
+控制任务先初始化单电机 ID3、OFF 状态、未设置增益的 runtime，检查 CAN 寄存器，建立 MsgBox 服务、启动 CAN0 并创建接收任务。失败时保持关闭；CAN 启动或接收任务创建失败会销毁服务，后者还请求停止 CAN0。成功后使用 `vTaskDelayUntil` 每 10 ms 运行一次。OFF 不主动发送 CAN。
 
-所有初始化失败都应阻止 P85 任务启动。关闭顺序：确认电机失能，停止 IPC/CAN 生产者和控制任务，然后 `p85_bst_msgbox_close`。尚有回调在运行时不能销毁句柄。
+`p85stat` 是只读 R0 shell 命令，输出初始化结果、状态/故障、TX/RX/拒绝计数、IPC 错误、过期命令、回复失败和两任务栈水位（单位 words）：
 
-- `board_monotonic_ms` 来自 R0 单调计时器，单位 ms、uint32 回绕；不能使用 Linux/RTC 墙钟。
-- 周期源使用绝对时刻调度，每 10 ms 一次。任务持续时间和抖动要测量；活动时超过 20 ms 的 tick 间隔会锁存保护。
-- 同一任务处理 RX、IPC、轨迹和 CAN TX；回调只复制事件，不能直接调用状态机命令。
-- 锁必须适用于该实例全部生产者上下文，保存并恢复先前中断状态；不能简单在退出时无条件开中断，不能只用 `volatile`。若存在其他核心访问还需正确的跨核同步，推荐限定为一个 R 核所有。
-- 16 项有界队列满时保护锁存；一次 step 最多取 16 项，防止生产者持续到达导致饿死周期。过期 IPC（超过 20 ms）不执行、不续租。
+| init | 含义 |
+| --- | --- |
+| -1 | 任务尚未初始化 |
+| -2 | runtime 初始化失败 |
+| -3 | CAN 寄存器配置与接入值不符 |
+| -4 | MsgBox 服务建立失败 |
+| -5 | 接收任务创建失败 |
+| -6 | CAN0 启动请求失败 |
+| 0 | 软件初始化完成；不代表 CAN 对端已连通 |
 
-## MsgBox 接收任务
+唯一控制任务拥有状态机、轨迹、TX 和回复 serializer；CAN IRQ/IPC 任务只复制事件。临界区保存 CPSR 的 IRQ 屏蔽位，屏蔽 IRQ 并执行 DMB，退出恢复原 IRQ 状态，适用于任务与已屏蔽中断的 ISR；仅适用于此 R0 实例。CAN0 中断配置优先级 150，FreeRTOS API 阈值为 `17 << 3 = 136`，满足该端口 FromISR 调用的静态要求。
 
-`p85_bst_msgbox_open` 使用官方 stub API 创建 RT0/fid0/sid2/cmd0x85 服务并 mmap 官方会话。用 `p85_bst_msgbox_endpoint(&handle,&queue)` 在任务启动前获取此服务的句柄及厂商队列引用，接入**实际 R SDK**的接收/唤醒/节点释放流程。该访问器不转移队列生命周期或所有权。
+运行时队列容量 16，一次 step 最多处理 16 项；溢出锁存保护。IPC 排队超过 20 ms 不执行、不续租；活动时 tick 间隔超过 20 ms 会保护。周期抖动和满载行为仍需实测。
 
-接收任务的每条完整单包 `rw_msg_t` 调用：
+## MsgBox 接收及节点回收
 
-```c
-p85_bst_msgbox_ingest(&vendor_message, board_monotonic_ms());
-```
+服务为 RT0 `0x90` / CPU0 `0x10` / fid0 / sid2 / cmd `0x85`。打开流程使用 stub create/register/mmap；发送端和接收端都校验固定 32 字节业务帧。目标系统若占用这一路由，必须同步更改 A/R 两端后重新测试。
 
-它校验路由、METHOD、长度和分包头，然后只复制 32 字节与回复 cookie 到队列。控制任务通过 `p85_bst_msgbox_reply` 回复。回复 serializer 为静态对象，只能由控制任务使用。
+`p85_hanhai_receive_once` 使用实际 RTOS `ipc_trans_layer_query_info(0x90, handle, 0, 0)` 等待，遍历 `completed_pack_list`。仅接受单节点完整报文，并调用 `p85_bst_msgbox_ingest` 复制内容和回复 token/version/security 位。多节点分片和空节点跳过。正返回值表示端点状态变化，不将旧列表当作新命令；负值交给接收任务记录并通知保护。
 
-必须核查实际 RTOS 侧接收 API、队列指针语义、节点确认/释放以及缓存一致性。Linux `ipc_trans_layer_get_rwmsg` 的 ioctl 实现不能直接用于 R0；A 核 mmap 的 KERNEL_2_USER 指针变换也不能直接套到 R 核。不要在 R 侧使用 `query_info(...,is_from_user=1)` 来推断会话请求。厂商路由若已使用 sid2，应同步更改两端并重测，而非占用既有服务。
+关键生命周期：SDK 下一次 query 会先回收上一批 completed 节点，然后整理新消息。接收方不手动释放、不修改队列，不与 `get_rwmsg` 快速路径混用。SDK 自己提供的 `KERNEL_2_USER` 宏在 RTOS 是恒等变换，POSIX 才做地址偏移；沿用宏而不自行套用 Linux mmap 指针算法。
 
-最先上板的验收应停留在 OFF：A 侧 HELLO/STATUS/DIAG 返回正确版本/序号，`tx_ok=0`。只有这一关通过后才开始 CAN 失能探测。
+新增测试使用官方 Linux 头文件与假传输，在下一次 query 毒化原报文存储后再执行 runtime，验证命令副本、回复序号/token 和 OFF 零发送；还覆盖多个 packet、分片、空报文及错误返回。这不替代新固件实际 A/R 握手。
 
-## CAN 发送、接收和错误
+## CAN0 发送、反馈及故障
 
-`p85_mcal_tx.c` 需要两个显式宏，缺失会编译失败：
+HTH 为 `CanHardwareObject_can0_tx0 = 12`，邮箱 64 字节、TX 中断模式。`P85_CAN_CONFIG_REVIEWED=1` 只声明配置已审阅，不能命名或解释成电气时序验证完成。P85 使用 `swPduHandle=0xffff`，在 SDK 的单条 CanIf TX demo 表外，避免发送完成被分派给时间同步测试。
 
-- `P85_CAN_TX_HTH`：由实际 Can/CanIf HOH 表确认的 CAN0 TX 硬件对象。旧文档中 can0_tx0/12 只能作为线索。
-- `P85_CAN_TIMING_VERIFIED=1`：完成下面的实际配置核查后才可设置。这是人工接入断言，不是时序自动验证器。
+已检查 `Can_Ipw_Write → FlexCAN_Ip_Send → FlexCAN_SetTxMsgBuff` 在返回前同步复制 payload，因此允许传入当前 step 的栈帧。`Can_Write == E_OK` 仅表示控制器接受请求，不证明发送完成、对端 ACK 或电机执行。DMA/其他 SDK 变体必须重新核查这一生命周期。
 
-确认 `Can_Write` 在返回 E_OK 前已复制 64 字节 payload。若端口异步保留调用者指针，应在板级适配层使用持久缓冲和 TX 完成管理，不能使用当前栈缓冲。BUSY/拒绝要返回 false；连续 3 次失败锁存。Bus-off/错误回调调用 `p85_runtime_bus_fault`，不能只写日志。
+接收在 `CanIf_RxIndication` 入口拦截 controller0，保留原始 `CanId` 的 IDE(bit31)、FD(bit30)、实际仲裁 ID 和长度，避免旧回调丢失元数据或将逻辑 RxPduId 当 ID。软件仅接纳标准 FD、ID3、12 字节反馈；硬件过滤器仍为原厂宽范围，繁忙总线负载仍待评估。RX 时刻取 ISR tick，单位 ms。
 
-接收回调需提供**真实仲裁 ID**、FD、扩展帧标志、实际长度和接收时刻：
+每周期调用 CAN bus-off/mode 主函数；bus-off、错误被动、控制器错误读取失败、增强 FIFO 溢出均通知 runtime 故障。原厂 CAN0 bus-off 配置为轮询，TX/RX 为中断，无需为此 HTH 添加 TX 轮询。
 
-```c
-p85_runtime_rx(&motor, actual_arbitration_id, is_fd, is_extended,
-               bytes, actual_length, capture_ms);
-```
+## 1/5 Mbps 配置依据
 
-特别注意：`CanFd_Demo_RxIndication(PduIdType CanId, ...)` 中名称叫 CanId 的值可能是 **RxPduId 逻辑索引**。先检查实际 `CanIf_RxIndication` 和生成配置，在元数据仍存在的入口复制到事件；不能把逻辑索引作为 ID3，不能凭猜测给每条帧硬编码 ID3。缺少 FD 标志的 CanIf 回调也需从驱动入口补传元数据。
+MCU 初始化将 CAN0 时钟分频写为 400 MHz / 5 = 80 MHz。`Can_PBcfg.c` 与 `FlexCAN_Ip_PBcfg.c` 两层配置同步修改，使用 CBT/FDCBT，禁用增强 ENCBT 模式。
 
-过滤标准 ID3、12 字节为本阶段目标，但底层入口仍应保留真实标志。关闭旧 CAN 演示的周期 TX、shell 发帧以及其他对相同邮箱/总线的所有者。避免回调大量串口打印阻塞控制任务。
+| 段 | 原始字段 propSeg / phase1 / phase2 / prescaler / rjw | 时序计算 | 目标 |
+| --- | --- | --- | --- |
+| 仲裁 CBT | 38 / 19 / 19 / 0 / 19 | 1+39+20+20=80 tq | 1 Mbps、75% 采样 |
+| 数据 FDCBT | 7 / 3 / 3 / 0 / 3 | 1+7+4+4=16 tq | 5 Mbps、75% 采样 |
 
-## CAN 时钟、波特率、FD 与 TDC
+FDCBT 的 FPROPSEG 是直接计数，其他相位字段按 N−1；不能统一加一。FD+BRS 开启，TDC offset 暂为 12 个时钟，是初值，尚未测量实际收发器传播延迟。启动检查分频字段、CBT/FDCBT、模式和 FD/BRS/TDC 回读；它不测量实际时钟、引脚波形或物理延迟。
 
-P85 要求 1 Mbps 仲裁 / 5 Mbps 数据 / FD+BRS。官方网页演示默认 500 kbps / 1 Mbps，不适用。检查实际工程中的：
+## 上板顺序
 
-```text
-rt_hal/config/mcal_cfg/output/src/Can_PBcfg.c
-rt_hal/config/mcal_cfg/output/src/FlexCAN_Ip_PBcfg.c
-bsw/mcal/mcu/src/Mcu.c
-Can/CanIf 的 HOH、控制器、过滤器、64 字节邮箱设置
-载板的 pinmux、收发器供电、enable/standby 管脚
-```
+1. 核对版本/启动签名和恢复入口；已有 Flash 只读备份与 SBL 布局证据见 `../docs/R0_FLASHING.md`。
+2. 部署后先检查 RT0 启动日志/`p85stat`，再运行 A 侧 HELLO/STATUS/DIAG；保持 OFF 且 `tx_ok=0`。
+3. 用 CAN FD 分析仪或第二节点核对 1/5 Mbps、FD+BRS、64 字节命令、12 字节反馈及 ACK；单节点无 ACK 不能证明链路通过。
+4. 接电机只做失能探测，再低增益保持、小幅移动和正弦。测栈水位、调度、反馈/主机失联保护与实际停止行为。
 
-在两个配置层保持一致，确认实际 FLEXCAN 时钟。对照 **MCAL 结构定义及寄存器写入代码**确认 Prescaler/PropSeg/PhaseSeg/SJW 是否为 N−1 编码、CBT/ENCBT 是否切换，再计算采样点与速率。网页示例表与简化公式存在歧义，因此本仓库不写猜测的寄存器五元组。
-
-配置 BRS、ISO FD 模式、64 字节邮箱、数据段 TDC 与收发器延迟。即使没有电机，也应使用 CAN FD 分析仪或第二个支持 1/5 Mbps 的节点验证帧格式、64 字节内容及 ACK/错误计数。单节点无 ACK 的结果不能证明通信成功。没有对端时不要持续重发造成 bus-off。
-
-## 部署及验收顺序
-
-1. 保留原固件，确认匹配 SDK 可重复构建原版、镜像大小和 Flash 槽位；验证恢复方式。
-2. 构建新 R0 固件，保留 map/ELF/二进制哈希和 SDK/编译器版本。先验证 OFF 状态的 A/R 通路。
-3. 验证 CAN 分析仪下 1/5 Mbps、标准 FD+BRS、64 字节内容和 RX 元数据；确保旧 demo 停止。
-4. 接电机后只做失能探测，校验温度/电压、回传 MSGID、状态和单位，再开展低增益保持与小幅移动。
-5. 记录周期抖动、队列峰值、TX 完成/错误、反馈新鲜度、主机断开保护和实际停止行为。
-
-这里只给出部署顺序；官方烧录流程和当前板布局证据见 `../docs/R0_FLASHING.md`、`../docs/R0_SDK_FINDINGS.md`。只读备份及当前验证边界见 `../docs/VALIDATION.md`。
+完整编译和签名包生成已完成，局部 Flash 写入/回读及 Linux 重启已实测；新 R0 镜像加载、握手与其余实机步骤仍未通过。
