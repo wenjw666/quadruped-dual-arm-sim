@@ -19,7 +19,7 @@ static void step(p85_control *c,uint32_t t,bool reply) {
   p85_tx_result(c,true,t);
   if(reply) {
    float p=c->have_origin?c->reference:0,v=c->reference_velocity;
-   uint8_t status=(c->state>=P85_ENABLING&&c->state<=P85_STOPPING)?1:0;
+   uint8_t status=p85_state_is_active(c->state)?1:0;
    feedback(fb,p85_get_u16(tx),p,v,0,status);CHECK(p85_receive(c,3,true,false,fb,12,t));
   }
  }
@@ -117,6 +117,90 @@ static void test_trajectory(void) {
  for(uint32_t t=24710;t<=25700;t+=10){step(&c,t,true);CHECK(c.state!=P85_FAULT);}
  CHECK(c.state==P85_HOLD&&fabsf(c.reference_velocity)<0.00001f);
 }
+static void test_demo(void) {
+ p85_control c;uint8_t seen[6]={0};p85_state order[13];unsigned count=0;
+ const p85_state expected[]={P85_DEMO_NEGATIVE,P85_DEMO_CENTER_OUT,P85_DEMO_POSITIVE,
+  P85_DEMO_CENTER_RETURN,P85_DEMO_POSITION_SINE,P85_SPEED_SINE,P85_DEMO_NEGATIVE,
+  P85_DEMO_CENTER_OUT,P85_DEMO_POSITIVE,P85_DEMO_CENTER_RETURN,
+  P85_DEMO_POSITION_SINE,P85_SPEED_SINE,P85_HOLD};
+ ready(&c);
+ CHECK(p85_demo(&c,0.02f,0.5f,0.05f,1.0f,1,2,10)==P85_OK);
+ order[count++]=c.state;
+ CHECK(p85_demo(&c,0.02f,0.2f,0.05f,1.0f,1,0,10)==P85_E_STATE);
+ for(uint32_t t=20;t<15000&&c.state!=P85_HOLD&&c.state!=P85_FAULT;t+=10) {
+  p85_state before=c.state;
+  step(&c,t,true);
+  CHECK(c.state!=P85_FAULT);
+  if(c.state>=P85_DEMO_NEGATIVE&&c.state<=P85_SPEED_SINE)seen[c.state-P85_DEMO_NEGATIVE]=1;
+  if(c.state!=before&&count<sizeof(order)/sizeof(order[0]))order[count++]=c.state;
+  if(c.state==P85_DEMO_POSITION_SINE) {
+   float elapsed=0.001f*(float)(t-c.state_ms),w=2.0f*3.14159265358979323846f/c.period_s;
+   float total=2.0f*c.ramp_s+c.period_s*c.cycles,env=1.0f,denv=0.0f;
+   if(elapsed>=total) {
+    CHECK(fabsf(c.reference-c.start_position)<0.00001f);
+    CHECK(fabsf(c.reference_velocity)<0.00001f);
+   } else {
+    if(elapsed<c.ramp_s) {
+     float x=elapsed/c.ramp_s;
+     env=x*x*x*(10.0f+x*(-15.0f+6.0f*x));
+     denv=30.0f*x*x*(1.0f-x)*(1.0f-x)/c.ramp_s;
+    } else if(elapsed>total-c.ramp_s) {
+     float x=(total-elapsed)/c.ramp_s;
+     env=x*x*x*(10.0f+x*(-15.0f+6.0f*x));
+     denv=-30.0f*x*x*(1.0f-x)*(1.0f-x)/c.ramp_s;
+    }
+    CHECK(fabsf(c.reference-(c.start_position+c.amplitude*env*sinf(w*(elapsed-c.ramp_s))))<0.00001f);
+    CHECK(fabsf(c.reference_velocity-c.amplitude*(denv*sinf(w*(elapsed-c.ramp_s))+env*w*cosf(w*(elapsed-c.ramp_s))))<0.00001f);
+   }
+   CHECK(fabsf(c.reference-c.origin)<=c.demo_amplitude+0.00001f);
+   CHECK(fabsf(c.reference_velocity)<=c.config.max_speed);
+  }
+  if(c.state==P85_SPEED_SINE) {
+   float elapsed=0.001f*(float)(t-c.state_ms),w=2.0f*3.14159265358979323846f/c.demo_speed_period_s;
+   float predicted=elapsed<c.demo_speed_period_s*c.demo_speed_cycles?
+    c.demo_sine_origin+(c.demo_speed_amplitude/w)*(1.0f-cosf(w*elapsed)):c.demo_sine_origin;
+   CHECK(fabsf(c.reference-predicted)<0.00001f);
+   CHECK(fabsf(c.reference_velocity)<=c.demo_speed_amplitude+0.00001f);
+   CHECK(fabsf(c.reference-c.origin)<=c.config.max_excursion);
+  }
+ }
+ for(unsigned i=0;i<6;i++)CHECK(seen[i]);
+ CHECK(c.state==P85_HOLD&&c.demo_completed==2);
+ CHECK(count==sizeof(expected)/sizeof(expected[0]));
+ for(unsigned i=0;i<count&&i<sizeof(expected)/sizeof(expected[0]);i++)CHECK(order[i]==expected[i]);
+ CHECK(fabsf(c.reference-c.origin)<0.00001f&&fabsf(c.reference_velocity)<0.00001f);
+ CHECK(p85_demo(&c,0.2f,0.2f,0.05f,1.0f,1,1,8100)==P85_E_VALUE);
+ CHECK(p85_demo(&c,0.02f,0.2f,0.5f,4.0f,1,1,8100)==P85_E_VALUE);
+ CHECK(p85_demo(&c,0.02f,0.2f,0.05f,1.0f,1,1,8100)==P85_E_VALUE);
+ ready(&c);
+ CHECK(p85_demo(&c,0.02f,0.5f,0.05f,1.0f,1,1,10)==P85_OK);
+ step(&c,20,true);
+ CHECK(p85_stop(&c,20)==P85_OK&&c.state==P85_STOPPING);
+ for(uint32_t t=30;t<1000&&c.state!=P85_HOLD&&c.state!=P85_FAULT;t+=10)step(&c,t,true);
+ CHECK(c.state==P85_HOLD&&c.demo_completed==0);
+ CHECK(p85_state_is_active(P85_SPEED_SINE)&&p85_state_has_reference(P85_SPEED_SINE));
+ /* Reject invalid absolute endpoints and excessive first travel before any motion. */
+ ready(&c);c.origin=c.reference=12.49f;
+ CHECK(p85_demo(&c,0.02f,1.0f,0.001f,0.5f,1,1,10)==P85_E_VALUE);
+ CHECK(c.state==P85_HOLD);
+ ready(&c);c.origin=c.reference=-12.49f;
+ CHECK(p85_demo(&c,0.02f,1.0f,0.001f,0.5f,1,1,10)==P85_E_VALUE);
+ CHECK(c.state==P85_HOLD);
+ ready(&c);c.reference=c.origin+0.18f;
+ CHECK(p85_demo(&c,0.02f,0.5f,0.05f,1.0f,1,1,10)==P85_E_VALUE);
+ CHECK(c.state==P85_HOLD);
+ /* A fresh but stationary motor must not pass a small point move. */
+ ready(&c);
+ CHECK(p85_demo(&c,0.01f,0.5f,0.02f,1.0f,1,1,10)==P85_OK);
+ for(uint32_t t=20;t<=3600&&c.state!=P85_FAULT;t+=10) {
+  uint8_t tx[64],fb[12];
+  p85_heartbeat(&c,t);CHECK(p85_tick(&c,t,tx));p85_tx_result(&c,true,t);
+  feedback(fb,p85_get_u16(tx),c.origin,0,0,c.state==P85_FAULT?0:1);
+  CHECK(p85_receive(&c,3,true,false,fb,12,t));
+  CHECK(c.state==P85_DEMO_NEGATIVE||c.state==P85_FAULT);
+ }
+ CHECK(c.state==P85_FAULT&&c.fault==P85_E_SETTLE_TIMEOUT);
+}
 static void put32(uint8_t *p,int32_t v){uint32_t u=(uint32_t)v;for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(u>>(8*i));}
 static void request(uint8_t *r,uint8_t op,uint16_t seq) {
  memset(r,0,32);memcpy(r,"P85C",4);r[4]=1;r[5]=op;p85_put_u16(r+6,seq);
@@ -144,6 +228,6 @@ static void test_wire_and_wrap(void) {
  CHECK(!p85_receive(&c,3,true,false,fb,12,105));
 }
 int main(void) {
- test_protocol();test_state_and_timeouts();test_feedback_validation();test_trajectory();test_wire_and_wrap();
+ test_protocol();test_state_and_timeouts();test_feedback_validation();test_trajectory();test_demo();test_wire_and_wrap();
  printf("P85: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

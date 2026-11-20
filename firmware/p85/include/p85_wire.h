@@ -14,7 +14,7 @@
 typedef enum { P85_OP_HELLO=0, P85_OP_HEARTBEAT=1, P85_OP_STATUS=2,
  P85_OP_CONFIG=3, P85_OP_PROBE=4, P85_OP_ENABLE=5, P85_OP_HOLD=6,
  P85_OP_MOVE=7, P85_OP_SINE=8, P85_OP_STOP=9, P85_OP_DISABLE=10,
- P85_OP_CLEAR=11, P85_OP_DIAG=12 } p85_opcode;
+ P85_OP_CLEAR=11, P85_OP_DIAG=12, P85_OP_DEMO=13 } p85_opcode;
 typedef struct { bool session; uint16_t last_sequence; } p85_session;
 p85_error p85_dispatch(p85_control *control, p85_session *session,
  const uint8_t *request, size_t length, uint32_t now_ms,

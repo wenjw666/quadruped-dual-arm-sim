@@ -4,7 +4,15 @@
 #define PI_F 3.14159265358979323846f
 static uint32_t age(uint32_t now, uint32_t then) { return now-then; }
 static bool finite_between(float x,float lo,float hi) { return isfinite(x)&&x>=lo&&x<=hi; }
-static bool active(const p85_control *c) { return c->state>=P85_ENABLING && c->state<=P85_STOPPING; }
+bool p85_state_is_active(p85_state s) {
+    return (s>=P85_ENABLING && s<=P85_STOPPING) ||
+           (s>=P85_DEMO_NEGATIVE && s<=P85_SPEED_SINE);
+}
+bool p85_state_has_reference(p85_state s) {
+    return s==P85_HOLD || s==P85_MOVE || s==P85_SINE || s==P85_STOPPING ||
+           (s>=P85_DEMO_NEGATIVE && s<=P85_SPEED_SINE);
+}
+static bool active(const p85_control *c) { return p85_state_is_active(c->state); }
 static bool fresh(const p85_control *c,uint32_t now) {
     return c->has_feedback && age(now,c->feedback_ms)<=c->config.feedback_timeout_ms;
 }
@@ -95,11 +103,83 @@ p85_error p85_sine(p85_control *c,float a,float period,uint16_t cycles,float ram
     c->start_position=c->reference;c->amplitude=a;c->period_s=period;c->cycles=cycles;
     c->ramp_s=ramp;state(c,P85_SINE,now);return P85_OK;
 }
+p85_error p85_demo(p85_control *c,float position_amplitude,float move_seconds,
+                    float speed_amplitude,float speed_period,uint16_t speed_cycles,
+                    uint16_t repeats,uint32_t now) {
+    float speed_excursion;
+    if(c->state!=P85_HOLD)return P85_E_STATE;
+    if(!finite_between(position_amplitude,0.001f,c->config.max_excursion)||
+       !finite_between(move_seconds,0.2f,120.0f)||
+       !finite_between(speed_amplitude,0.001f,c->config.max_speed)||
+       !finite_between(speed_period,0.5f,60.0f)||
+       speed_cycles<1u||speed_cycles>100u||repeats<1u||repeats>100u||
+       !within(c,c->origin-position_amplitude)||!within(c,c->origin+position_amplitude)||
+       1.875f*fabsf(c->origin-position_amplitude-c->reference)/move_seconds>c->config.max_speed||
+       1.875f*position_amplitude/move_seconds>c->config.max_speed||
+       (PI_F+3.75f)*position_amplitude/move_seconds>c->config.max_speed) return P85_E_VALUE;
+    speed_excursion=speed_amplitude*speed_period/PI_F;
+    if(!finite_between(speed_excursion,0.0f,c->config.max_excursion)||
+       !within(c,c->origin+speed_excursion)) return P85_E_VALUE;
+    c->demo_amplitude=position_amplitude;
+    c->demo_move_s=move_seconds;
+    c->demo_speed_amplitude=speed_amplitude;
+    c->demo_speed_period_s=speed_period;
+    c->demo_speed_cycles=speed_cycles;
+    c->demo_repeats=repeats;
+    c->demo_completed=0;
+    c->demo_sine_origin=c->origin;
+    c->start_position=c->reference;
+    c->start_velocity=0.0f;
+    c->goal=c->origin-position_amplitude;
+    c->duration_s=move_seconds;
+    state(c,P85_DEMO_NEGATIVE,now);
+    return P85_OK;
+}
+static void demo_enter_point(p85_control *c,p85_state next,float offset,uint32_t now) {
+    c->start_position=c->reference;
+    c->start_velocity=0.0f;
+    c->goal=c->origin+offset;
+    c->duration_s=c->demo_move_s;
+    state(c,next,now);
+}
+static void demo_advance(p85_control *c,uint32_t now) {
+    switch(c->state) {
+    case P85_DEMO_NEGATIVE:
+        demo_enter_point(c,P85_DEMO_CENTER_OUT,0.0f,now);break;
+    case P85_DEMO_CENTER_OUT:
+        demo_enter_point(c,P85_DEMO_POSITIVE,c->demo_amplitude,now);break;
+    case P85_DEMO_POSITIVE:
+        demo_enter_point(c,P85_DEMO_CENTER_RETURN,0.0f,now);break;
+    case P85_DEMO_CENTER_RETURN:
+        c->start_position=c->origin;
+        c->amplitude=c->demo_amplitude;
+        c->period_s=2.0f*c->demo_move_s;
+        c->ramp_s=0.5f*c->demo_move_s;
+        c->cycles=1u;
+        state(c,P85_DEMO_POSITION_SINE,now);break;
+    case P85_DEMO_POSITION_SINE:
+        c->demo_sine_origin=c->origin;
+        c->reference=c->demo_sine_origin;
+        c->reference_velocity=0.0f;
+        state(c,P85_SPEED_SINE,now);break;
+    case P85_SPEED_SINE:
+        c->demo_completed++;
+        c->reference=c->demo_sine_origin;
+        c->reference_velocity=0.0f;
+        if(c->demo_completed<c->demo_repeats)
+            demo_enter_point(c,P85_DEMO_NEGATIVE,-c->demo_amplitude,now);
+        else state(c,P85_HOLD,now);
+        break;
+    default:
+        p85_trip(c,P85_E_SEQUENCE,now);break;
+    }
+}
 p85_error p85_stop(p85_control *c,uint32_t now) {
     float T=0.5f,goal;
     if(c->state==P85_HOLD)return P85_OK;
     if(c->state==P85_STOPPING)return P85_OK;
-    if(c->state!=P85_MOVE&&c->state!=P85_SINE)return P85_E_STATE;
+    if(c->state!=P85_MOVE&&c->state!=P85_SINE&&
+       !(c->state>=P85_DEMO_NEGATIVE&&c->state<=P85_SPEED_SINE))return P85_E_STATE;
     goal=c->reference+0.5f*c->reference_velocity*T;
     if(!within(c,goal)) {p85_trip(c,P85_E_POSITION,now);return P85_E_POSITION;}
     c->start_position=c->reference;c->start_velocity=c->reference_velocity;
@@ -144,31 +224,71 @@ static void smooth(float x,float *y,float *dy) {
     if(x<=0){*y=0;*dy=0;}else if(x>=1){*y=1;*dy=0;}
     else {*y=x*x*x*(10+x*(-15+6*x));*dy=30*x*x*(1-x)*(1-x);}
 }
+/* At least two position LSBs, capped below the smallest demo point step. */
+static bool demo_settled(const p85_control *c) {
+    float tolerance=fminf(0.002f,fmaxf(0.0008f,0.1f*c->demo_amplitude));
+    return fabsf(c->feedback.velocity)<0.03f &&
+           fabsf(c->reference-c->feedback.position)<tolerance;
+}
 static void reference(p85_control *c,uint32_t now) {
     float t=0.001f*(float)age(now,c->state_ms);
-    if(c->state==P85_MOVE||c->state==P85_STOPPING) {
+    bool demo_point=c->state>=P85_DEMO_NEGATIVE&&c->state<=P85_DEMO_CENTER_RETURN;
+    if(c->state==P85_MOVE||c->state==P85_STOPPING||demo_point) {
+        p85_state before=c->state;
         segment(c->start_position,c->start_velocity,c->goal,c->duration_s,t,&c->reference,&c->reference_velocity);
         if(t>=c->duration_s) {
-            if(fabsf(c->feedback.velocity)<0.03f&&fabsf(c->reference-c->feedback.position)<0.02f) {
+            if(demo_point?demo_settled(c):
+               (fabsf(c->feedback.velocity)<0.03f&&fabsf(c->reference-c->feedback.position)<0.02f)) {
                 if(!c->settling){c->settled_ms=now;c->settling=true;}
-                if(age(now,c->settled_ms)>=200)state(c,P85_HOLD,now);
+                if(age(now,c->settled_ms)>=200) {
+                    if(demo_point)demo_advance(c,now);
+                    else state(c,P85_HOLD,now);
+                }
             } else c->settling=false;
-            if(t>c->duration_s+3.0f)p85_trip(c,P85_E_STOP_TIMEOUT,now);
+            if(t>c->duration_s+3.0f)
+                p85_trip(c,before==P85_STOPPING?P85_E_STOP_TIMEOUT:P85_E_SETTLE_TIMEOUT,now);
         }
-    } else if(c->state==P85_SINE) {
+    } else if(c->state==P85_SINE||c->state==P85_DEMO_POSITION_SINE) {
+        bool demo_sine=c->state==P85_DEMO_POSITION_SINE;
         float total=2*c->ramp_s+c->period_s*c->cycles;
         float env=1,denv=0,w=2*PI_F/c->period_s;
         if(t>=total) {
             c->reference=c->start_position;c->reference_velocity=0;
-            c->goal=c->reference;c->start_velocity=0;c->duration_s=0.2f;
-            state(c,P85_STOPPING,now);return;
+            if(demo_sine) {
+                if(demo_settled(c)) {
+                    if(!c->settling){c->settled_ms=now;c->settling=true;}
+                    if(age(now,c->settled_ms)>=200)demo_advance(c,now);
+                } else c->settling=false;
+                if(t>total+3.0f)p85_trip(c,P85_E_SETTLE_TIMEOUT,now);
+            } else {
+                c->goal=c->reference;c->start_velocity=0;c->duration_s=0.2f;
+                state(c,P85_STOPPING,now);
+            }
+            return;
         }
         if(t<c->ramp_s) {smooth(t/c->ramp_s,&env,&denv);denv/=c->ramp_s;}
         else if(t>total-c->ramp_s){smooth((total-t)/c->ramp_s,&env,&denv);denv/=-c->ramp_s;}
         c->reference=c->start_position+c->amplitude*env*sinf(w*(t-c->ramp_s));
         c->reference_velocity=c->amplitude*(denv*sinf(w*(t-c->ramp_s))+env*w*cosf(w*(t-c->ramp_s)));
+    } else if(c->state==P85_SPEED_SINE) {
+        float total=c->demo_speed_period_s*c->demo_speed_cycles;
+        float w=2.0f*PI_F/c->demo_speed_period_s;
+        if(t>=total) {
+            c->reference=c->demo_sine_origin;
+            c->reference_velocity=0.0f;
+            if(demo_settled(c)) {
+                if(!c->settling){c->settled_ms=now;c->settling=true;}
+                if(age(now,c->settled_ms)>=200)demo_advance(c,now);
+            } else c->settling=false;
+            if(t>total+3.0f)p85_trip(c,P85_E_SETTLE_TIMEOUT,now);
+            return;
+        }
+        c->reference=c->demo_sine_origin+
+            (c->demo_speed_amplitude/w)*(1.0f-cosf(w*t));
+        c->reference_velocity=c->demo_speed_amplitude*sinf(w*t);
     }
 }
+
 bool p85_tick(p85_control *c,uint32_t now,uint8_t out[P85_TX_SIZE]) {
     p85_error e; p85_command cmd;uint8_t special=P85_SPECIAL_DISABLE;bool run=false;
     if(c->tx_pending) {c->tx_pending=false;p85_trip(c,P85_E_TX,now);}
@@ -184,7 +304,7 @@ bool p85_tick(p85_control *c,uint32_t now,uint8_t out[P85_TX_SIZE]) {
     if((c->state==P85_ENABLING||c->state==P85_DISABLING||c->state==P85_PROBING)&&
        age(now,c->state_ms)>c->config.ack_timeout_ms) p85_trip(c,P85_E_ACK_TIMEOUT,now);
     if(c->state==P85_DISABLED&&fresh(c,now)&&(c->feedback.status&P85_STATUS_ENABLED))p85_trip(c,P85_E_MOTOR,now);
-    if(c->state>=P85_HOLD&&c->state<=P85_STOPPING) {
+    if(p85_state_has_reference(c->state)) {
         reference(c,now);
         if(c->state!=P85_FAULT) {
             float effort=c->config.kp*(c->reference-c->feedback.position)+
@@ -215,12 +335,13 @@ void p85_tx_result(p85_control *c,bool ok,uint32_t now) {
     h->time_ms=now;h->ordinal=c->tx_ordinal;h->valid=true;
 }
 const char *p85_state_name(p85_state s) {
-    static const char *const names[]={"off","probing","disabled","enabling","hold","move","sine","stopping","disabling","fault"};
-    return (unsigned)s<=P85_FAULT?names[(unsigned)s]:"invalid";
+    static const char *const names[]={"off","probing","disabled","enabling","hold","move","sine","stopping","disabling","fault",
+        "demo_point_negative","demo_point_center_out","demo_point_positive","demo_point_center_return","demo_position_sine","demo_speed_sine"};
+    return (unsigned)s<sizeof(names)/sizeof(names[0])?names[(unsigned)s]:"invalid";
 }
 const char *p85_error_name(p85_error e) {
     static const char *const names[]={"ok","state","value","no_feedback","gains_not_set","motor_fault",
     "feedback_timeout","host_timeout","ack_timeout","tracking_error","overspeed","temperature","voltage",
-    "can_tx","tick_overrun","sequence","wire","position_limit","torque_limit","stop_timeout","queue_overflow"};
-    return (unsigned)e<=P85_E_QUEUE?names[(unsigned)e]:"invalid";
+    "can_tx","tick_overrun","sequence","wire","position_limit","torque_limit","stop_timeout","queue_overflow","settle_timeout"};
+    return (unsigned)e<sizeof(names)/sizeof(names[0])?names[(unsigned)e]:"invalid";
 }

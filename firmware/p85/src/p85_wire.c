@@ -38,9 +38,9 @@ p85_error p85_dispatch(p85_control *c,p85_session *s,const uint8_t *r,size_t n,
  uint32_t now,uint8_t out[P85_WIRE_SIZE]) {
  p85_error e=P85_OK;uint16_t seq=n>=8?p85_get_u16(r+6):0;unsigned op=n>=6?r[5]:255;
  if(n!=P85_WIRE_SIZE||memcmp(r,"P85C",4)||r[4]!=P85_WIRE_VERSION) e=P85_E_WIRE;
- else if(op>P85_OP_DIAG)e=P85_E_WIRE;
+ else if(op>P85_OP_DEMO)e=P85_E_WIRE;
  else if(op==P85_OP_HELLO) {
-  if(c->state>=P85_ENABLING&&c->state<=P85_STOPPING)e=P85_E_STATE;
+  if(p85_state_is_active(c->state))e=P85_E_STATE;
   else {s->session=true;s->last_sequence=seq;p85_heartbeat(c,now);}
  } else if(!s->session)e=P85_E_SEQUENCE;
  else if((uint16_t)(seq-s->last_sequence)==0 || (uint16_t)(seq-s->last_sequence)>32767u)e=P85_E_SEQUENCE;
@@ -62,6 +62,11 @@ p85_error p85_dispatch(p85_control *c,p85_session *s,const uint8_t *r,size_t n,
   case P85_OP_SINE:
    if(arg(r,2)<1||arg(r,2)>100)e=P85_E_VALUE;
    else e=p85_sine(c,arg(r,0)*0.000001f,arg(r,1)*0.001f,(uint16_t)arg(r,2),arg(r,3)*0.001f,now);
+   break;
+  case P85_OP_DEMO:
+   if(arg(r,4)<1||arg(r,4)>100||arg(r,5)<1||arg(r,5)>100)e=P85_E_VALUE;
+   else e=p85_demo(c,arg(r,0)*0.000001f,arg(r,1)*0.001f,
+       arg(r,2)*0.000001f,arg(r,3)*0.001f,(uint16_t)arg(r,4),(uint16_t)arg(r,5),now);
    break;
   case P85_OP_STOP:e=p85_stop(c,now);break;
   case P85_OP_DISABLE:e=p85_disable(c,now);break;

@@ -2,9 +2,11 @@
 
 本分支 `codex/p85-rt0-motor-control` 用于 AURA/C1200 开发板上的嵌入式电机控制：Linux A 核通过 MsgBox 下发任务，R0 核以 10 ms 周期生成 P85MAX-S 的 CAN FD 控制帧，为后续四足底盘的多关节控制提供基础。
 
-**截至 2026-11-19：R0/R2 配套固件执行、A/R 通信、CAN0 内部回环，以及 CANFD0 ↔ CANFD1 双向物理通信均已通过验证。真实 P85 电机尚未连接，电机反馈、使能和位置运动仍需实机验收。**
+**2026-11-20：已完成单电机多点位置、位置正弦、速度正弦的 R0 顺序循环演示，完整固件编译及 R0 Flash 写入、回读校验通过。新镜像待整板断电上电验收；上电默认 OFF，显式启动后才运动。真实 P85 的反馈、使能和运动尚未实测。**
 
-[完整开发与调试记录](firmware/p85/README.md) · [首次电机接入流程](firmware/p85/docs/BRINGUP.md) · [物理 CAN FD 验证记录](firmware/p85/docs/PHYSICAL_CAN_VALIDATION.md)
+此前 R0/R2 配套固件执行、A/R 通信、CAN0 内部回环及 CANFD0 ↔ CANFD1 双向物理通信均已通过验证。
+
+[本轮电机演示与写入记录](firmware/p85/docs/MOTOR_DEMO.md) · [完整开发与调试记录](firmware/p85/README.md) · [首次电机接入流程](firmware/p85/docs/BRINGUP.md) · [物理 CAN FD 验证记录](firmware/p85/docs/PHYSICAL_CAN_VALIDATION.md)
 
 ## 当前工程
 
@@ -38,7 +40,7 @@ R0 核：业务队列 → 10 ms 控制状态机 → CAN FD → P85 电机
 | A/R 真实业务 | HELLO 及 25 轮 STATUS/DIAG 通过，全程 OFF、fault=0 |
 | 部署恢复 | 采集后恢复原始 Flash，工作站逐字节核对一致 |
 
-上述结果来自诊断固件的实际启动与运行。原始 Flash 已恢复，后续上电前应按部署说明确认当前常驻镜像；不能直接假定诊断镜像仍会自动启动。详细过程、失败原因、修复方法和证据位置见[完整调试记录](firmware/p85/README.md)。
+上表记录截至 11 月 19 日的诊断固件实测。11 月 20 日已另行写入默认 OFF 的电机演示 R0 镜像，仅修改 `0xB00000` 起始 1 MiB；下载完整 64 MiB 独立比较，确认分区外字节全部不变。该新镜像尚未经过冷启动运行验收。详细过程、失败原因、修复方法和证据位置见[完整调试记录](firmware/p85/README.md)。
 
 ## Linux 软件构建与测试
 
@@ -61,9 +63,11 @@ ctest --test-dir firmware/p85/build --output-on-failure
 
 ## 接入真实电机
 
-下一阶段按[首次实机调试](firmware/p85/docs/BRINGUP.md)核对电源、ID、通信速率、接线和终端电阻，从反馈探测及失能确认开始，再验证小范围、低速度的位置控制。
+先完成[本轮固件冷启动验收](firmware/p85/docs/MOTOR_DEMO.md#本次板端路径及启动验收)，再按[首次实机调试](firmware/p85/docs/BRINGUP.md)核对电源、ID、通信速率、接线和终端电阻，从反馈探测及失能确认开始，再验证小范围、低速度的位置控制。
 
-双控制器物理自检使用 CANFD0 ↔ CANFD1 的外部连接，其接线条件和诊断固件配置需要在单电机接入前重新核对。多电机扩展还需集中管理完整 64 字节命令帧和各关节反馈，具体边界见[工程说明](firmware/p85/README.md)。
+新 `run-demo` 由 R0 顺序执行 `−A → 0 → +A → 0` 多点位置、位置正弦及速度正弦，按 `--repeat` 循环；主机打印阶段和反馈、保存 CSV，并在结束后确认失能。命令与小幅示例见[电机演示说明](firmware/p85/docs/MOTOR_DEMO.md)。
+
+单电机接入前拆除 CANFD0 ↔ CANFD1 的诊断跨接，使用 CANFD0 连接电机，并核对总线端接。多电机扩展还需集中管理完整 64 字节命令帧和各关节反馈，具体边界见[工程说明](firmware/p85/README.md)。
 
 ## 分支内容约定
 

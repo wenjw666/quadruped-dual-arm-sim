@@ -1,6 +1,6 @@
 # 首次单电机接线与调试
 
-**前置条件：匹配 R0 固件完成构建、部署，A/R OFF 状态握手通过，CAN 分析仪已核对 1/5 Mbps、FD+BRS 和 64 字节发送。当前工程尚未达到这些条件。** 下面是后续验收步骤，不表示当前连接电机即可运行。
+**2026-11-20 状态：** 新演示固件已构建、写入并完成 Flash 独立回读，尚待整板冷启动后的镜像与 A/R OFF 验收。此前控制器回环和双向物理链路通过，真实电机尚未实测。按以下步骤逐项确认反馈、使能和小幅运动，再运行完整序列。
 
 ## 连接关系
 
@@ -38,6 +38,8 @@
 
 **尚未确认用户实物载板的型号、修订版与针脚 1 方向。只有丝印/版本与该图纸一致且针脚方向已核实，才可使用此表接线。** 图纸中的编号不等于从任意观察方向数的第几个针。官方载板规格书中的布局图也应与实物对照。
 
+本轮板端源码为 `/home/bst/p85_validation/demo-20261120/source`，构建产物在同级 `build/`，因此以下命令显式给出 IPC 库路径。旧 `/home/bst/p85_control` 不是本轮演示部署目录。先完成 [新固件冷启动验收](MOTOR_DEMO.md#本次板端路径及启动验收)，再进行电机操作。上电默认 OFF，不会自动转动。
+
 ## 0. 台架准备
 
 确认实物为 P85MAX-S CAN FD 版、实际 ID 和电机固件；默认 ID3 尚未读到实机验证。首阶段只接一个电机，避免本工程给其他槽位的失能影响其他设备。固定电机、移除机械负载并留出小角度余量，设置可独立断开电机电源的条件。初次不写机械零位，不测试大范围或四足承载动作。
@@ -47,9 +49,9 @@
 ## 1. 先验证 A/R，不使能
 
 ```sh
-cd /home/bst/p85_control
-sudo ./build/p85_ipc_probe
-sudo python3 host/p85ctl.py status
+cd /home/bst/p85_validation/demo-20261120/source
+sudo ../build/p85_ipc_probe
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so status
 ```
 
 必须得到本工程版本 1 的 HELLO 和诊断应答。查询结果 2 只代表 RT0 在线；`-110` 表示 P85 业务应答超时；不要继续运行轨迹。OFF 时应无 CAN TX。若找不到 `libp85_msgbox.so`，先安装/核对官方 MsgBox 包并构建，不能用仿真替代硬件验收。
@@ -57,7 +59,7 @@ sudo python3 host/p85ctl.py status
 ## 2. 失能探测
 
 ```sh
-sudo python3 host/p85ctl.py probe
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so probe
 ```
 
 程序发 64 字节失能帧，等待 ID3 的 12 字节反馈且状态 bit0=0。检查 `feedback_fresh=true`、温度/电压合理、无故障；CAN 分析仪核对真实 MSGID 和小端解码。没有反馈时应报 `ack_timeout`，这是失败而非“电机未动所以成功”。ID 不符要修改 R 配置重建，不允许放宽过滤或伪造反馈。
@@ -69,7 +71,7 @@ sudo python3 host/p85ctl.py probe
 ```sh
 : "${P85_KP:?set a validated bench Kp}"
 : "${P85_KD:?set a validated bench Kd}"
-sudo python3 host/p85ctl.py --csv /home/bst/p85-validation-hold-new.csv \
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so --csv /home/bst/p85-validation-hold-new.csv \
   run-hold --kp "$P85_KP" --kd "$P85_KD" --hold-seconds 1 \
   --max-speed 0.2 --max-torque 2 --excursion 0.05
 ```
@@ -81,11 +83,11 @@ sudo python3 host/p85ctl.py --csv /home/bst/p85-validation-hold-new.csv \
 前一步稳定通过后，才执行如下示例。CSV 路径必须是新文件。
 
 ```sh
-sudo python3 host/p85ctl.py --csv /home/bst/p85-validation-move-new.csv \
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so --csv /home/bst/p85-validation-move-new.csv \
   run-move --kp "$P85_KP" --kd "$P85_KD" --offset 0.01 --duration 2 \
   --max-speed 0.2 --max-torque 2 --excursion 0.05
 
-sudo python3 host/p85ctl.py --csv /home/bst/p85-validation-sine-new.csv \
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so --csv /home/bst/p85-validation-sine-new.csv \
   run-sine --kp "$P85_KP" --kd "$P85_KD" --amplitude 0.01 --period 4 \
   --cycles 3 --ramp 1 --max-speed 0.2 --max-torque 2 --excursion 0.05
 
@@ -94,13 +96,29 @@ python3 tools/analyze_csv.py /home/bst/p85-validation-sine-new.csv
 
 位置偏移相对每次使能时的位置，单位 rad；本例 0.01 rad 约 0.57°。正弦稳定段 12 s，启动/退出包络另计。只有实机方向、比例与轨迹一致后再逐步增加幅值。RMSE 没有用户指定的验收阈值，不能把仿真误差作为实机通过标准。
 
-## 5. 停止、故障和失联
+## 5. R 核顺序循环演示
+
+在台架准备、失能探测和低增益小幅移动都已通过后，再运行新的 `run-demo`。先确认电机牢固固定、输出端空载或没有会导致夹伤/碰撞的机构，现场保留可独立切断电机电源的手段。必须给出经过验证的 Kp/Kd；仿真使用的增益不代表硬件建议。
+
+```sh
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so --csv /home/bst/p85-demo-new.csv \
+  run-demo --kp "$P85_KP" --kd "$P85_KD" \
+  --position-amplitude 0.01 --move-duration 2 \
+  --speed-amplitude 0.03 --speed-period 4 --speed-cycles 1 --repeat 1 \
+  --max-speed 0.2 --max-torque 2 --excursion 0.05
+```
+
+R0 会循环执行 `−0.01 → 0 → +0.01 → 0 rad` 多点位置跟踪、一周期位置正弦，再执行 4 秒周期、峰值 0.03 rad/s 的速度正弦。示例的位置正弦周期为 4 秒，起止包络各 1 秒；速度正弦位置参考是速度积分，峰值额外位移约 `0.03 × 4 / π = 0.0382 rad`。整套序列运行一次后回到 HOLD，再由主机确认保持状态并失能。终端每 100 ms 输出阶段、目标/反馈位置、反馈速度与力矩；每秒输出温度、电压、反馈新鲜度和 CAN 计数，最近诊断值也写入每条 CSV 状态采样。状态采样目标为 10 ms。按 Ctrl+C 会尝试平滑停止并等待失能反馈确认。
+
+先运行一次、确认方向和反馈正确后，再增加循环数。`--repeat` 和 `--speed-cycles` 范围为 1–100；驱动手册没有提供机械行程边界，软件限制不能替代装置的机械止挡、硬件急停或台架观察。该命令不会写机械零位。每段结束均要求位置和速度反馈连续稳定 200 ms，规划结束 3 s 仍未稳定则报 `settle_timeout` 并请求失能。状态含义、稳定判据和本次写入证据见 [MOTOR_DEMO.md](MOTOR_DEMO.md)。
+
+## 6. 停止、故障和失联
 
 - 正常结束及一次 Ctrl+C：主机先请求平滑停止、等待低速保持，再失能并查新鲜反馈。看到 `disabled_confirmed=true` 才是反馈确认；发送成功或进程退出本身不代表电机停机。
 - 失去主机续租超过 300 ms、反馈超过 100 ms、驱动故障等，R0 状态机锁存并持续请求失能。实机验证应先在无负载台架进行。
 - R0 自身停摆、电源故障或断开的 CAN 线会使软件无法发出有效失能；不要把这些情况等同于已验证的停止。厂家断流行为尚待确认。
-- 故障原因排除，且已有健康新鲜的失能反馈，才使用 `sudo python3 host/p85ctl.py clear`；无反馈不会清除保护。
-- `sudo python3 host/p85ctl.py disable` 请求立即失能，用于已确认可释放负载的情形；承载机构需要先处置负载。
+- 故障原因排除，且已有健康新鲜的失能反馈，才使用 `sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so clear`；无反馈不会清除保护。
+- `sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so disable` 请求立即失能，用于已确认可释放负载的情形；承载机构需要先处置负载。
 
 ## 后续四足扩展
 

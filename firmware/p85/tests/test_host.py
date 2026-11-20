@@ -99,6 +99,29 @@ class EndToEnd(unittest.TestCase):
         self.assertEqual(len(peaks), 2, peaks)
         self.assertAlmostEqual((peaks[1]-peaks[0])/1000, 1, delta=0.06)
         self.assertIn("stopping", {r["state_name"] for r in rows})
+    def test_demo_repeats_stages_and_reports_feedback(self):
+        self.server()
+        result = self.cli("--csv", str(self.path/"demo.csv"), "run-demo", "--kp", "5", "--kd", "0.1",
+                          "--position-amplitude", "0.01", "--move-duration", "0.2",
+                          "--speed-amplitude", "0.02", "--speed-period", "0.5",
+                          "--speed-cycles", "2", "--repeat", "2")
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertIn('"disabled_confirmed": true', result.stdout)
+        self.assertIn('"diagnostics": true', result.stdout)
+        with open(self.path/"demo.csv") as stream:
+            rows = list(csv.DictReader(stream))
+        stages = {row["state_name"] for row in rows}
+        self.assertTrue({"demo_point_negative", "demo_point_center_out", "demo_point_positive",
+                         "demo_point_center_return", "demo_position_sine", "demo_speed_sine"} <= stages, stages)
+        sine = [row for row in rows if row["state_name"] == "demo_speed_sine"]
+        self.assertGreater(len(sine), 100)
+        self.assertGreater(max(float(row["velocity_rad_s"]) for row in sine), 0.018)
+        self.assertLess(min(float(row["velocity_rad_s"]) for row in sine), -0.018)
+        self.assertTrue(all(abs(float(row["position_rad"])) < 0.05 for row in sine))
+        starts = [i for i, row in enumerate(rows) if row["state_name"] == "demo_point_negative"]
+        self.assertGreaterEqual(len(starts), 2)
+        self.assertTrue(any(row["diag_temperature_c"] for row in rows))
+        self.assertTrue(any(row["diag_feedback_fresh"] == "True" for row in rows))
     def test_move(self):
         self.server()
         result = self.cli("run-move", "--kp", "5", "--kd", "0.1", "--offset", "0.02", "--duration", "0.5")
@@ -110,7 +133,7 @@ class EndToEnd(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('ack_timeout', result.stdout+result.stderr)
     def test_feedback_loss_latches_fault(self):
-        self.server("--simulate", "--drop-feedback-after-ms", "600")
+        self.server("--simulate", "--drop-feedback-after-ms", "1500")
         result = self.cli("run-hold", "--kp", "5", "--kd", "0.1", "--hold-seconds", "3")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('feedback_timeout', result.stdout+result.stderr)

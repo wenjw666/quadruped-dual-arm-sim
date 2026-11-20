@@ -1,0 +1,121 @@
+{
+  "date": "2026-11-20",
+  "timezone": "Asia/Tokyo",
+  "branch": "codex/p85-rt0-motor-control",
+  "deployment_state": "flashed_pending_cold_boot",
+  "real_motor_motion_verified": false,
+  "new_r0_runtime_verified": false,
+  "software_tests": {
+    "wsl": {
+      "passed": 9,
+      "total": 9
+    },
+    "board_linux": {
+      "passed": 11,
+      "total": 11
+    },
+    "meaning": "Software and simulated-plant tests; not new R0 or physical motor acceptance"
+  },
+  "build": {
+    "status": "passed",
+    "boot_loopback": false,
+    "boot_can_link": false,
+    "sram": {
+      "base": "0x04000000",
+      "end_exclusive": "0x409f100",
+      "used_span_bytes": 651520,
+      "capacity_bytes": 1048576,
+      "remaining_bytes": 397056
+    },
+    "artifacts": {
+      "realtime_freertos_core0.elf": {
+        "bytes": 3152868,
+        "sha256": "3fed2354ea79c025e8fde182416b5441aee230792fa559d91400af124fd060b0"
+      },
+      "realtime_freertos_core0.map": {
+        "bytes": 2584745,
+        "sha256": "135cf6fad6f702a9286ef74b8021a690fdd983b9bbdda9663f8abf834167d482"
+      },
+      "realtime_freertos_core0.bin": {
+        "bytes": 298244,
+        "sha256": "8e59520a49dc5e6f29c870eaa287bf346fd95dcb5f90ee22a24fd6b5b20513af"
+      },
+      "realtime_freertos_core0.hex": {
+        "bytes": 838906,
+        "sha256": "9d272e1e76666c84fd12df708442ee0ac879d289a1176f8e4e9329efdd179ed3"
+      },
+      "BST-REALTIME0-RELEASE-C1200-1-3-0.bin": {
+        "bytes": 1048576,
+        "sha256": "c6fcab289cd3b3247ffb3ab0150616da2c5c928d7203e96630aceec03f240e4a"
+      }
+    },
+    "sources_sha256": {
+      "src/p85_control.c": "886f0d3777abb4fcd4c8fe79253dbb215ac9ee3d63ad5134aade2e39891e2cda",
+      "src/p85_protocol.c": "6d5aa733a16625c4b9cb5167fcfdc43e27f515f134b1c9522c530aacfc8764ce",
+      "src/p85_wire.c": "f42cda3b7807eec189c5331fcc886fe947f1163df3c57608ab9a646d9327dda8",
+      "include/p85_control.h": "60decb39575e2a71f4942c1c9847bcfbcd2378b4ff28a0844241c15249bb1ee7",
+      "include/p85_protocol.h": "3f6eecb05df5490b8613a55d6adde258ad03cc11c25a055ab82d19bc5a2b3150",
+      "include/p85_runtime.h": "6072634e2a84f290e12a21ea176563c612362b263a97c98573813704a83e351f",
+      "include/p85_wire.h": "a5f8ee3fbcabd32ae8193b0ff8140187fd2a629906fab33ca7ca68dcadbcd434",
+      "rt0/hanhai/p85_board.c": "4ad119bfa94024edcdb62819a3887dac752b0285dcb5240a2ab9c8cbe6a721d4",
+      "rt0/hanhai/p85_board.h": "1ba7d0df6fb8b8512107f658d5d7198c8d0e9ef25cdcc8e0fe9c0f9d592c3f7b",
+      "rt0/hanhai/p85_can_link.c": "131a3116a413787d03e6ce9707538c238bec47a274224b5734eb17884d3e3bf7",
+      "rt0/hanhai/p85_can_link.h": "7dc940496a35323694a2676211a501bc92b77805c4246f1911fdf53d50a30265",
+      "rt0/hanhai/p85_can_loopback.c": "91ea821b5ee8a25dbf2852994b13b273d0757735805c9fa3014eec5603060fb0",
+      "rt0/hanhai/p85_can_loopback.h": "fa20614bc88779aafdb2e06fc76f4f3297acf2d34d9501896efb735d0133ba6a",
+      "rt0/hanhai/p85_can_trace.c": "e028b926ba2fac9bf93d4e80c24c6f7bdc3c211eb9fdf104dcd7b75c230e8254",
+      "rt0/hanhai/p85_can_trace.h": "aa4f3777448ba44994de31912e59eedb69a7373ac2c4d163e79fcc8c8c5475d3",
+      "rt0/hanhai/p85_hanhai_msgbox.c": "19eb297f3b28cbaa3cb081f72292cfedce4f01a97fd0413c736b55e5f8d11d82",
+      "rt0/hanhai/p85_report.h": "bc3c09c7e85d883b3a6cfd2475d370c5624d993363e0a4297d1d4ecb917fc935",
+      "rt0/hanhai/sdk-lock.json": "ff03c103d2c313e751fa3ae9856fc024599f1c252666263c43b5b3f328b00bf7",
+      "rt0/p85_bst_msgbox.c": "d050e47f9823fb46ae85cd70078bbad6f3b92dd181c98d2cbbba92a8b7fc1eae",
+      "rt0/p85_bst_msgbox.h": "c9158d11eee169b46f9c24089519c93353403342f2dabe92d79b80dbd1dc3ba3",
+      "rt0/p85_mcal_tx.c": "7c11a971157e63012d91bd63647ae817692dc157f139776779d7652f9f05c1af",
+      "rt0/p85_mcal_tx.h": "204f49f0effb6ed209bceee483ba50faf92e3e38a18c91cf9e38686e73b11c81",
+      "rt0/p85_runtime.c": "ea7641780198ac23dea5603a73b1aa789a28c60ef4022b139ca8d8b135da637e",
+      "tools/analyze_csv.py": "26f89f4a8fa3901d1847a4d99b6d85d9a3a0c3a6d5159019c4c0535ee0f3035b",
+      "tools/build_hanhai_sdk.py": "6619411e31709b11aafd3644793eee4588eac16d8926c2647a8a1de1cff916cb",
+      "tools/build_r2_can1_handoff.py": "e951dc52d9e5a3b1e02334cd22b09f89dae0a7ddcb0171a4e415b5d46906245c",
+      "tools/can_handoff_flash_guard.py": "9dbd1b9e2c3d99077dc41cf8c2e903ce4babdf6995673e7f07efd852b40b8f32",
+      "tools/capture_simulation.py": "bdc31afe75a6fad4a78f9f06e036c33569ae9750a30131846dbab19a839447ef",
+      "tools/check_r5_compile.py": "82f768d93c3eafe076c90a2933ebe5be7efe263e901ef719e2c613e7a8f6962f",
+      "tools/collect_can_handoff.py": "d8cecc76c1026d53850af10527f3fe092e217859d2a7b827ef24bbefec8fb974",
+      "tools/inspect_aon_state.py": "7438faefbce64ff1eca05349f9b6ccd41f57a68a108fc5d269f9213d0329647d",
+      "tools/inspect_can_link.py": "fb007bf1ec021524bcaa169057b864bd49e20d77c6fd6ec4df34d5f146747fc0",
+      "tools/inspect_can_loopback.py": "6faac8e649abc4c6bb210b72f82c06be72c337832426862e90ca25b2c6b0bbf2",
+      "tools/inspect_can_trace.py": "b2aec3ec566a67853f66af0970029ab5b1796f0289790bf2a2fff0381384d5ea",
+      "tools/inspect_r0_image.py": "c07df7eb017213f5574451dcfa134b56b562ea902c17350787efd39ef1c17335",
+      "tools/inspect_r2_handoff.py": "c4f4ed4a90a60e405db1280a3f2c04d70dc57cc0037329c537976c3da82919a9",
+      "tools/prepare_hanhai_sdk.py": "5ee223c0821a99dc266361ced5ddfbf6e6fd27573db7130d0a7ebfb489c01ccd"
+    }
+  },
+  "flash": {
+    "status": "passed",
+    "rt0_offset": "0xb00000",
+    "rt0_bytes": 1048576,
+    "full_bytes": 67108864,
+    "baseline_sha256": "235ebdfd03cb5be6dd19dd5eb986dcec521948ba105f1d97a911cbb8d1eb302e",
+    "after_sha256": "424e16efae3e2d2da9a7636dbd0d974a6a987bd65cc8fa62a8d350b09a3086e2",
+    "rt0_sha256": "c6fcab289cd3b3247ffb3ab0150616da2c5c928d7203e96630aceec03f240e4a",
+    "outside_rt0_byte_identical": true,
+    "r1_unchanged": true,
+    "r2_unchanged": true,
+    "origin_boot_id": "8c2102a9-c60c-438a-a8aa-057cedd88710"
+  },
+  "cold_boot": {
+    "required": true,
+    "automatic_motion": false,
+    "accept_service": "p85-motor-demo-accept.service",
+    "rollback_timer": "p85-motor-demo-rollback.timer",
+    "rollback_after_linux_boot_minutes": 15,
+    "rollback_reboots": false,
+    "transaction_path": "/var/lib/p85-rt0-deploy/20261120-motor-demo-01",
+    "negative_old_image_check": {
+      "accepted": false,
+      "image_matches": false,
+      "checked_bytes": 54159
+    }
+  },
+  "host_source_sha256": "7dab6336a5b26d67ee78e90cf996c6159d633162411b3abcf34d0e3cd01615ec",
+  "documentation": "../MOTOR_DEMO.md"
+}

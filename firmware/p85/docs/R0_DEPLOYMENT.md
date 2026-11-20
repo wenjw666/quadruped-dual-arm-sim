@@ -1,5 +1,13 @@
 # P85 RT0 实板部署、复位诊断与回退记录
 
+## 2026-11-20：单电机顺序演示 R0 镜像已写入
+
+新镜像只修改 R0 `0xB00000` 起始 1 MiB，签名包 SHA256 为 `c6fcab289cd3b3247ffb3ab0150616da2c5c928d7203e96630aceec03f240e4a`。完整 64 MiB 下载到工作站逐字节核对，R0 内容等于候选，分区外全部不变；写入后全片 SHA256 为 `424e16efae3e2d2da9a7636dbd0d974a6a987bd65cc8fa62a8d350b09a3086e2`。
+
+事务为 `/var/lib/p85-rt0-deploy/20261120-motor-demo-01`。本次 boot `8c2102a9-c60c-438a-a8aa-057cedd88710` 的 SRAM 仍为旧程序，负向验收因镜像不符失败，未误接受。新 accept 服务与 15 分钟回退 timer 已 enabled、当前 inactive，等待整板主电源断电上电。新 R0 默认 OFF，自动验收不发运动命令；通过后取消回退，失败则恢复原 R0 Flash 且不自动重启。
+
+WSL 9/9、板端 Linux 11/11 软件测试通过，不能代替本次新镜像的运行或电机实测。动作、命令、备份和完整证据见 [MOTOR_DEMO.md](MOTOR_DEMO.md)。下文均为历史轮次。
+
 ## 2026-11-19：双向物理链路及 OFF 应用通信通过
 
 本次 boot `3d8fbaa2-a575-4987-b452-19bb40c0ad6e` 不同于 origin boot。R0/R2 ELF 内容匹配，R2 心跳由 2,153 推进至 2,181，CAN1 inactive，CAN2/3 START 成功；AON R0/R2 均为 cold、normal。CAN0 内部回环 512 帧通过；正常模式 CAN0→CAN1、CAN1→CAN0 各 512 帧全部提交、确认和接收，错误、超时、载荷差异均为 0，测试总耗时 2,048 ms。每个方向覆盖 16 种长度，每种 32 帧。

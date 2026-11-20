@@ -58,7 +58,7 @@ void p85_runtime_step(p85_runtime *r,uint32_t now) {
             } else p85_dispatch(&r->control,&r->session,e.data,e.length,now,reply);
             if(!r->port.reply(r->port.context,e.key,reply,sizeof(reply))) {
                 r->reply_failed++;
-                if(r->control.state>=P85_ENABLING&&r->control.state<=P85_STOPPING)
+                if(p85_state_is_active(r->control.state))
                     p85_trip(&r->control,P85_E_HOST_TIMEOUT,now);
             }
         }

@@ -15,12 +15,14 @@ import sys
 import tempfile
 import time
 
-STATES = "off probing disabled enabling hold move sine stopping disabling fault".split()
+STATES = ("off probing disabled enabling hold move sine stopping disabling fault "
+          "demo_point_negative demo_point_center_out demo_point_positive "
+          "demo_point_center_return demo_position_sine demo_speed_sine").split()
 ERRORS = ("ok state value no_feedback gains_not_set motor_fault feedback_timeout host_timeout "
           "ack_timeout tracking_error overspeed temperature voltage can_tx tick_overrun sequence "
-          "wire position_limit torque_limit stop_timeout queue_overflow").split()
-OPS = dict(zip("hello heartbeat status config probe enable hold move sine stop disable clear diag".split(), range(13)))
-ACTIVE = {3, 4, 5, 6, 7}
+          "wire position_limit torque_limit stop_timeout queue_overflow settle_timeout").split()
+OPS = dict(zip("hello heartbeat status config probe enable hold move sine stop disable clear diag demo".split(), range(14)))
+ACTIVE = {3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15}
 
 class ControlError(RuntimeError):
     pass
@@ -119,17 +121,29 @@ class Recorder:
         self.file = open(path, "x", newline="") if path else None
         self.writer = None
         self.previous = None
+        self.latest_diagnostic = dict(diag_tx_ok=None, diag_rx_ok=None, diag_rx_rejected=None,
+                                      diag_tx_failed=None, diag_temperature_c=None, diag_voltage_v=None,
+                                      diag_feedback_fresh=None, diag_feedback_age_ms=None)
     def record(self, reply):
-        row = dict(host_monotonic_s=round(time.monotonic(), 6), **reply)
+        row = dict(host_monotonic_s=round(time.monotonic(), 6), **reply, **self.latest_diagnostic)
         if self.file:
             if self.writer is None:
                 self.writer = csv.DictWriter(self.file, fieldnames=list(row))
                 self.writer.writeheader()
             self.writer.writerow(row)
         transition = (reply["state"], reply["fault"])
-        if transition != self.previous:
+        now = time.monotonic()
+        if transition != self.previous or now-getattr(self, "last_print", 0.0) >= 0.1:
             print(json.dumps(reply), flush=True)
             self.previous = transition
+            self.last_print = now
+    def diagnostic(self, diag):
+        self.latest_diagnostic = dict(
+            diag_tx_ok=diag["tx_ok"], diag_rx_ok=diag["rx_ok"],
+            diag_rx_rejected=diag["rx_rejected"], diag_tx_failed=diag["tx_failed"],
+            diag_temperature_c=diag["temperature_c"], diag_voltage_v=diag["voltage_v"],
+            diag_feedback_fresh=diag["feedback_fresh"], diag_feedback_age_ms=diag["feedback_age_ms"])
+        print(json.dumps(dict(diagnostics=True, **diag)), flush=True)
     def close(self):
         if self.file:
             self.file.close()
@@ -154,7 +168,7 @@ def safe_disable(client, recorder, graceful):
     """A fresh disabled feedback is required; a sent command alone is insufficient."""
     try:
         reply = client.call("status")
-        if graceful and reply["state"] in {4, 5, 6, 7}:
+        if graceful and reply["state"] in ACTIVE:
             client.call("stop")
             wait_state(client, recorder, {4}, 4)
     except (ControlError, OSError):
@@ -181,7 +195,7 @@ def parser():
     sub = p.add_subparsers(dest="command", required=True)
     for command in ["status", "probe", "disable", "clear"]:
         sub.add_parser(command)
-    for command in ["run-sine", "run-move", "run-hold"]:
+    for command in ["run-sine", "run-move", "run-hold", "run-demo"]:
         q = sub.add_parser(command)
         q.add_argument("--kp", type=float, required=True)
         q.add_argument("--kd", type=float, required=True)
@@ -198,6 +212,13 @@ def parser():
         if command == "run-move":
             q.add_argument("--offset", type=float, required=True)
             q.add_argument("--duration", type=float, required=True)
+        if command == "run-demo":
+            q.add_argument("--position-amplitude", type=float, default=0.01)
+            q.add_argument("--move-duration", type=float, default=2.0)
+            q.add_argument("--speed-amplitude", type=float, default=0.03)
+            q.add_argument("--speed-period", type=float, default=4.0)
+            q.add_argument("--speed-cycles", type=int, default=1)
+            q.add_argument("--repeat", type=int, default=1)
     return p
 
 def main(argv=None):
@@ -248,6 +269,33 @@ def main(argv=None):
                     elif args.command == "run-move":
                         client.call("move", scaled(args.offset, 1e6), scaled(args.duration, 1000))
                         wait_state(client, recorder, {4}, args.duration+5)
+                    elif args.command == "run-demo":
+                        if not 1 <= args.speed_cycles <= 100 or not 1 <= args.repeat <= 100:
+                            raise ControlError("speed-cycles and repeat must be in [1, 100]")
+                        client.call("demo", scaled(args.position_amplitude, 1e6),
+                                    scaled(args.move_duration, 1000),
+                                    scaled(args.speed_amplitude, 1e6),
+                                    scaled(args.speed_period, 1000),
+                                    args.speed_cycles, args.repeat)
+                        timeout = args.repeat*(4*(args.move_duration+3.5)+
+                                               3*args.move_duration+3.5+
+                                               args.speed_period*args.speed_cycles+3.5)+5
+                        next_diag = time.monotonic()
+                        deadline = time.monotonic()+timeout
+                        while True:
+                            reply = client.call("status")
+                            recorder.record(reply)
+                            now = time.monotonic()
+                            if reply["state"] == 9:
+                                raise ControlError(f"latched fault: {reply['fault_name']}")
+                            if reply["state"] == 4:
+                                break
+                            if now >= deadline:
+                                raise ControlError(f"demo timeout; last={reply['state_name']}")
+                            if now >= next_diag:
+                                recorder.diagnostic(client.call("diag"))
+                                next_diag = time.monotonic()+1.0
+                            time.sleep(0.01)
                     wait_state(client, recorder, {4}, args.hold_seconds+1, minimum=args.hold_seconds)
                 finally:
                     original_error = sys.exc_info()[1]
