@@ -6,13 +6,13 @@
 
 [11 月 20 日电机演示与写入](docs/MOTOR_DEMO.md) · [历史物理链路结果](#本轮成功的范围与结束状态) · [调试全过程](#开发与调试全过程) · [问题与修复](#关键问题与修复对照) · [证据复核](#复核本轮结果) · [Linux 构建](#linux-构建和验证) · [后续单电机调试](docs/BRINGUP.md)
 
-## 2026-11-20：电机演示固件已写入，等待整板上电
+## 2026-11-20：电机演示 R0 冷启动验收通过
 
 已对照 P85 手册复核 64 字节命令、12 字节反馈、ID3 槽位、小端量化、使能/失能和故障位。新增 `run-demo`：R0 依次执行负向位置、回中、正向位置、回中、位置正弦、速度正弦，按循环数重放后返回 HOLD；主机打印阶段和反馈、保存 CSV，再确认失能。每段必须等反馈连续稳定 200 ms；规划结束 3 s 仍未到位则锁存 `settle_timeout`。
 
 WSL 软件 CTest 9/9、板端 Linux 软件 CTest 11/11 均通过。最终 Cortex-R5 固件完成编译、链接和签名，SRAM 剩余 397056 字节；已写入 R0 `0xB00000` 起始 1 MiB。下载完整 64 MiB 独立回读核对，候选内容逐字节一致，R1/R2 和其他字节不变。
 
-**当前 Flash 已是本轮电机演示 R0 镜像，但当前 SRAM 仍为之前上电加载的旧程序。需要整板主电源断电再上电；新镜像默认 OFF，不会自动转动。自动服务只做镜像和 HELLO/STATUS/DIAG 验收，失败保留 15 分钟回退。真实电机运动尚未实测。**
+整板重新上电后，boot ID `6e983f2c-5dfc-4f5d-9fd1-ffb1cf5c35d4` 的自动验收通过：镜像抽查匹配、AON `realtime0=normal`、真实 MsgBox 25 轮 STATUS/DIAG 通过，设备时钟推进 5,280 ms，过程中保持 OFF/fault=0 且 CAN 发送为零。回退标记已清除、timer 已禁用，未发生回退。当前板端状态查询仍为 OFF/fault=0。真实 P85 未取得反馈，尚未验证使能或运动。验收细节和 SSH 命令见[电机演示记录](docs/MOTOR_DEMO.md)。
 
 板端新源码位于 `/home/bst/p85_validation/demo-20261120/source`，Linux 构建与 IPC 库在同级 `build/`，部署及完整备份位于 `/var/lib/p85-rt0-deploy/20261120-motor-demo-01`。首次接入先拆除 CANFD0↔CANFD1 诊断跨接，使用 CANFD0 接 P85，经过探测、保持和小幅单点验证后再启动演示。
 
@@ -332,7 +332,7 @@ ctest --test-dir build --output-on-failure
 
 首个完整 P85 基线已按固定的公开 manifest 将协议、状态机、运行时、MCAL/MsgBox 及板级任务全部编入 R0。该基线原始 BIN 为 294244 字节，签名包为 1 MiB，ELF 在 R0 的 1 MiB SRAM 中使用 646592 字节。这些大小属于首个基线；后续回环和物理诊断变体以各自 build report 为准。构建脚本、SDK 固定版本、命令、哈希、告警和当时的 5 组软件测试见 [完整构建记录](docs/R0_BUILD.md)。
 
-入口为 `tools/build_hanhai_sdk.py`，在 Linux/WSL 的新隔离目录构建，不访问开发板。原始 SDK 和签名材料保留在忽略目录，不提交到本工程。实际板级流程见 [R0 接入说明](rt0/PORTING.md)；此前固件已通过冷启动和 OFF 状态 A/R 握手；11 月 20 日新演示镜像尚待冷启动验收。CAN FD 控制器回环、物理收发及带电机验证见 [CAN FD 验证范围](docs/CAN_FD_VALIDATION.md)。
+入口为 `tools/build_hanhai_sdk.py`，在 Linux/WSL 的新隔离目录构建，不访问开发板。原始 SDK 和签名材料保留在忽略目录，不提交到本工程。实际板级流程见 [R0 接入说明](rt0/PORTING.md)；11 月 20 日电机演示镜像已通过冷启动及 OFF 状态 A/R 验收。CAN FD 控制器回环、物理收发及真实电机验证边界见 [CAN FD 验证范围](docs/CAN_FD_VALIDATION.md)和[电机演示记录](docs/MOTOR_DEMO.md)。
 
 ## 无电机软件演练
 
@@ -362,7 +362,7 @@ python3 tools/analyze_csv.py /tmp/p85-demo-new.csv
 
 ## 真实接口和完成条件
 
-下列第一条命令只查询 RT0 在线状态；第二条发送 P85 HELLO/状态请求。它们不发送电机使能。第二条须在确认候选镜像已载入 R0 后执行；本轮已完成镜像、内部回环、双向外部物理收发和 OFF 通信验收；11 月 20 日新演示固件的 Flash 状态和待冷启动条件见文首。
+下列第一条命令只查询 RT0 在线状态；第二条发送 P85 HELLO/状态请求。它们不发送电机使能。本轮电机演示镜像已在 boot `6e983f2c-5dfc-4f5d-9fd1-ffb1cf5c35d4` 完成冷启动验收；内部回环及双向外部物理 CAN 收发来自 11 月 19 日历史轮次。真实 P85 尚未验收。
 
 ```sh
 sudo ./build/p85_ipc_probe

@@ -2,9 +2,9 @@
   "date": "2026-11-20",
   "timezone": "Asia/Tokyo",
   "branch": "codex/p85-rt0-motor-control",
-  "deployment_state": "flashed_pending_cold_boot",
+  "deployment_state": "cold_boot_accepted_off_no_motor_feedback",
   "real_motor_motion_verified": false,
-  "new_r0_runtime_verified": false,
+  "new_r0_runtime_verified": true,
   "software_tests": {
     "wsl": {
       "passed": 9,
@@ -103,9 +103,14 @@
     "origin_boot_id": "8c2102a9-c60c-438a-a8aa-057cedd88710"
   },
   "cold_boot": {
-    "required": true,
+    "required": false,
     "automatic_motion": false,
-    "accept_service": "p85-motor-demo-accept.service",
+    "accept_service": {
+      "result": "success",
+      "exit_status": 0,
+      "post_run_active_state": "inactive",
+      "post_run_sub_state": "dead"
+    },
     "rollback_timer": "p85-motor-demo-rollback.timer",
     "rollback_after_linux_boot_minutes": 15,
     "rollback_reboots": false,
@@ -114,7 +119,55 @@
       "accepted": false,
       "image_matches": false,
       "checked_bytes": 54159
-    }
+    },
+    "accepted": true,
+    "status": "passed",
+    "boot_id": "6e983f2c-5dfc-4f5d-9fd1-ffb1cf5c35d4",
+    "uptime_start_s": 13.96,
+    "uptime_end_s": 21.42,
+    "inputs_pinned": true,
+    "accepted_image_sha256": "c6fcab289cd3b3247ffb3ab0150616da2c5c928d7203e96630aceec03f240e4a",
+    "image_check": {
+      "image_matches": true,
+      "checked_bytes": 54159,
+      "elf_sha256": "3fed2354ea79c025e8fde182416b5441aee230792fa559d91400af124fd060b0"
+    },
+    "aon_rt0": {
+      "state": "normal",
+      "start_reason": "cold",
+      "start_count": 1
+    },
+    "runtime": {
+      "status": "passed",
+      "samples": 25,
+      "operations": [
+        "hello",
+        "status",
+        "diag"
+      ],
+      "device_elapsed_ms": 5280,
+      "max_status_diag_roundtrip_ms": 19.83112000000098,
+      "state": "off",
+      "fault": 0,
+      "can_tx": 0
+    },
+    "current_status_query": {
+      "state": "off",
+      "fault": 0,
+      "motor_status": 0,
+      "tx_ok": 0,
+      "rx_ok": 0,
+      "rx_rejected": 0,
+      "tx_failed": 0,
+      "feedback_fresh": false
+    },
+    "rollback": {
+      "armed_marker_present": false,
+      "timer": "disabled",
+      "executed": false
+    },
+    "physical_motor_feedback_verified": false,
+    "real_motor_motion_verified": false
   },
   "host_source_sha256": "7dab6336a5b26d67ee78e90cf996c6159d633162411b3abcf34d0e3cd01615ec",
   "documentation": "../MOTOR_DEMO.md"

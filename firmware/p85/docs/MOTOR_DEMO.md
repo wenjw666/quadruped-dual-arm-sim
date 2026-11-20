@@ -1,6 +1,6 @@
 # P85 实际电机控制与 R0 顺序演示
 
-2026-11-20（Asia/Tokyo），分支 `codex/p85-rt0-motor-control`。本次在已验证的 CAN FD 基础上增加 R0 自主轨迹序列、阶段遥测和反馈稳定判定，完成完整固件构建及 R0 Flash 写入。**新固件尚待整板断电上电后的运行验收，真实 P85 反馈、使能及运动尚未验证。**
+2026-11-20（Asia/Tokyo），分支 `codex/p85-rt0-motor-control`。本次在已验证的 CAN FD 基础上增加 R0 自主轨迹序列、阶段遥测和反馈稳定判定，并完成完整固件构建、R0 Flash 写入及整板冷启动验收。**当前新镜像已确认运行，控制器保持 OFF、fault=0；真实 P85 反馈、使能及运动尚未验证。**
 
 ## 对照说明书核查的协议
 
@@ -53,12 +53,13 @@ R0 接收到一次 `demo` 业务请求后，在自己的 10 ms 任务内生成�
 | Linux 构建 | `/home/bst/p85_validation/demo-20261120/build` |
 | 实际 IPC 库 | `/home/bst/p85_validation/demo-20261120/build/libp85_msgbox.so` |
 | 固件、备份及部署事务 | `/var/lib/p85-rt0-deploy/20261120-motor-demo-01`，root 所有 |
-| 自动验收 | `p85-motor-demo-accept.service`，已 enabled，当前未启动 |
-| 未验收回退 | `p85-motor-demo-rollback.timer`，下次 Linux 启动 15 分钟后检查，当前 inactive |
+| 本次 boot ID | `6e983f2c-5dfc-4f5d-9fd1-ffb1cf5c35d4` |
+| 自动验收 | `p85-motor-demo-accept.service`，Result=success、退出码 0；oneshot 完成后 inactive/dead 属正常 |
+| 回退保护 | 已接受本次镜像，`armed.json` 已移除，`p85-motor-demo-rollback.timer` disabled；未执行回退 |
 
 本次只写 R0 槽位，没有更新 R2。新固件关闭启动时 CAN 内部回环和双控制器链路自检，默认 OFF；仅在显式 probe/运行命令后发送电机协议帧。接电机前应拆除此前 CANFD0↔CANFD1 的测试跨接，使用 CANFD0 接 P85，并按 [BRINGUP.md](BRINGUP.md) 确认接线、电源和总线端接。
 
-**需要整板主电源断电再上电。** Flash 写入不会替换当前 R0 SRAM；此前 Linux 软件重启没有重新加载 R0 的实测记录见 [R0_DEPLOYMENT.md](R0_DEPLOYMENT.md)。新自动验收只检查镜像、AON 与 HELLO/STATUS/DIAG，不使能、不运行轨迹。
+本次整板重新上电的验收已通过。报告位于 `/var/lib/p85-rt0-deploy/20261120-motor-demo-01/boot-acceptance-6e983f2c-5dfc-4f5d-9fd1-ffb1cf5c35d4.json`，其 SHA256 为 `c6fcab289cd3b3247ffb3ab0150616da2c5c928d7203e96630aceec03f240e4a` 的 R0 镜像在 SRAM 中抽查 54,159 字节代码/只读数据全部匹配，AON 显示 `realtime0=normal`、cold start。25 轮真实 STATUS/DIAG 全程 OFF/fault=0，R0 设备时钟推进 5,280 ms，最大 STATUS/DIAG 往返 19.831 ms，电机 CAN tx=0。成功后 `accepted.json` 已写入，回退标记清除且 timer disabled。该验收不使能电机、不发送 CAN 控制帧，也不代表真实 P85 已通过。
 
 ```sh
 # 整板重新上电且 SSH 恢复后，只读查看自动验收
@@ -68,6 +69,32 @@ sudo cat /var/lib/p85-rt0-deploy/20261120-motor-demo-01/accepted.json
 ```
 
 验收要求：新 ELF 代码/只读数据与 R0 SRAM 匹配、AON 中 R0 为 normal、25 轮真实 STATUS/DIAG 全程 OFF/fault=0、设备时钟推进且电机 CAN 发送为零。成功后移除 armed 标记并取消回退。失败会保留保护，15 分钟到期恢复原 R0 Flash，**不会自动重启或替换 SRAM**。若 Linux 本身无法启动，该 timer 无法执行；完整备份仍在部署目录及工作站。
+
+
+### 电脑上的日常命令入口
+
+网线连接用于 SSH 进入 A 核 Linux；在登录后的板端 shell 运行 `p85ctl.py`，命令经 MsgBox 交给 R0，再由 R0 的 CANFD0 控制电机。串口（板上 Micro-B 调试口）用于观察启动/故障日志，不是运行本控制 CLI 的入口。电机接线使用 CANFD0；接电机前拆下此前 CANFD0↔CANFD1 的诊断跨接。
+
+Windows PowerShell：
+
+```powershell
+ssh bst@192.168.1.3
+```
+
+登录目标板后：
+
+```sh
+cd /home/bst/p85_validation/demo-20261120/source
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so status
+```
+
+`status` 只发 HELLO/STATUS/DIAG 查询，不使能电机。当前实测返回 `state_name=off`、`fault_name=ok`、`motor_status=0`，CAN 发送和接收计数为 0，`feedback_fresh=false`；因此目前只是确认控制器和 A/R 软件链路已运行，尚无电机反馈。确认真实电机已按 [BRINGUP.md](BRINGUP.md) 接好、ID/电源/端接均核对后，才运行会发送失能帧并等待实机反馈的 `probe`：
+
+```sh
+sudo python3 host/p85ctl.py --library ../build/libp85_msgbox.so probe
+```
+
+无新鲜失能反馈时，停止后续步骤并检查 ID、CANH/CANL、地线、电机独立供电、终端电阻和总线速率。`run-hold`、`run-move`、`run-demo` 会主动使能并运动；先按 BRINGUP 的顺序验证，Kp/Kd 必须由安全台架实测确定，不能照抄仿真增益。
 
 ## 接入电机后运行
 
@@ -99,7 +126,7 @@ Ctrl+C 尝试平滑停止并等待失能确认；看到 `disabled_confirmed=true
 | 检查 | 本次结果及边界 |
 | --- | --- |
 | WSL 软件 CTest | 9/9 通过，包括核心协议、状态机、主机流程及诊断解析 |
-| 板端 Linux 软件 CTest | 11/11 通过，额外验证官方 MsgBox/SDK 头文件适配；不代表 R0 新镜像已执行 |
+| 板端 Linux 软件 CTest | 11/11 通过，额外验证官方 MsgBox/SDK 头文件适配；不代表电机机械动作 |
 | 演示回归 | 全六阶段、两次循环、速度正负变化、位移范围、故障失能；新鲜但不动的反馈会触发 settle_timeout |
 | 边界回归 | 绝对位置上下界、首段实际距离峰值速度、速度积分行程越界 |
 | 完整 R0 固件 | 固定 19 项 SDK revision，Cortex-R5 hard-float 编译、链接、签名成功；SRAM 余量 397056 字节 |
@@ -107,9 +134,9 @@ Ctrl+C 尝试平滑停止并等待失能确认；看到 `disabled_confirmed=true
 | 写入 | `/dev/mtdblock0` 的 `0xB00000` 起始 1 MiB |
 | 独立回读 | 下载完整 64 MiB，R0 逐字节等于候选；分区外所有字节与备份一致，R1/R2 未改变 |
 | 旧运行镜像负向检查 | 自动验收 --check-only 在本次旧 boot 上因 SRAM 镜像不符失败，accepted=false；未将旧固件误验收为新固件 |
-| 待完成 | 整板冷启动后的新 R0/OFF 验收，以及真实 P85 探测、使能、轨迹与故障实测 |
+| 待完成 | 真实 P85 探测、反馈、使能、低速轨迹与故障响应实测 |
 
-可在仓库查看[本轮精简证据清单](evidence/motor-demo-20261120.json)，其中明确标注 `flashed_pending_cold_boot`，并记录产物与源码哈希。源码和最终构建产物通过 build-report 的 SHA256 关联。SDK 原有 newlib syscall 桩、RWX LOAD 段及旧签名工具弃用告警仍存在，完整日志已保留；本次 P85 源码未见编译告警。板端墙钟落后，首次解包/构建出现未来时间戳告警；使用全新构建目录完成全部目标，随后已校正该暂存源码目录的文件时间戳。
+可在仓库查看[本轮精简证据清单](evidence/motor-demo-20261120.json)，其中记录 Flash、整板冷启动验收、当前 OFF 状态和产物/源码哈希。源码和最终构建产物通过 build-report 的 SHA256 关联。SDK 原有 newlib syscall 桩、RWX LOAD 段及旧签名工具弃用告警仍存在，完整日志已保留；本次 P85 源码未见编译告警。板端墙钟落后，首次解包/构建出现未来时间戳告警；使用全新构建目录完成全部目标，随后已校正该暂存源码目录的文件时间戳。
 
 ```text
 签名包：BST-REALTIME0-RELEASE-C1200-1-3-0.bin（1048576 字节）

@@ -1,10 +1,18 @@
 # P85 RT0 实板部署、复位诊断与回退记录
 
-## 2026-11-20：单电机顺序演示 R0 镜像已写入
+## 2026-11-20：电机演示 R0 整板冷启动验收通过
+
+整板重新上电后的 boot ID 为 `6e983f2c-5dfc-4f5d-9fd1-ffb1cf5c35d4`。自动验收从 uptime 13.96 s 开始，在 21.42 s 结束并通过：R0 ELF 代码/只读数据 54,159 字节抽查与 SRAM 匹配，AON `realtime0=normal`、启动原因 cold；25 轮真实 MsgBox STATUS/DIAG 全部成功，R0 设备时钟推进 5,280 ms，最大 STATUS/DIAG 往返 19.831 ms，全程 `state=off`、`fault=0`、`can_tx=0`。接受的签名镜像 SHA256 为 `c6fcab289cd3b3247ffb3ab0150616da2c5c928d7203e96630aceec03f240e4a`，`inputs_pinned=true`。
+
+板端再次独立查询得到 `state=off`、`fault=0`、`motor_status=0`，CAN `tx_ok=rx_ok=rx_rejected=tx_failed=0`，`feedback_fresh=false`。这证明本轮 R0 镜像及 A/R 软件通道已运行，不证明电机已连接或协议物理层、反馈、使能、动作通过。验收服务 oneshot `Result=success`、退出码 0；任务结束后显示 inactive/dead 是正常状态。`accepted.json` 已记录本次 boot，`armed.json` 不存在，回退 timer 为 disabled，未执行回退。
+
+完整报告位于板端 `/var/lib/p85-rt0-deploy/20261120-motor-demo-01/boot-acceptance-6e983f2c-5dfc-4f5d-9fd1-ffb1cf5c35d4.json`。当前命令通过 SSH 在 A 核 Linux 上运行，硬件电机接 CANFD0，串口用于启动日志；接入及分级试机命令见 [BRINGUP.md](BRINGUP.md) 和 [MOTOR_DEMO.md](MOTOR_DEMO.md)。
+
+## 2026-11-20：单电机顺序演示 R0 镜像写入（冷启动前历史快照）
 
 新镜像只修改 R0 `0xB00000` 起始 1 MiB，签名包 SHA256 为 `c6fcab289cd3b3247ffb3ab0150616da2c5c928d7203e96630aceec03f240e4a`。完整 64 MiB 下载到工作站逐字节核对，R0 内容等于候选，分区外全部不变；写入后全片 SHA256 为 `424e16efae3e2d2da9a7636dbd0d974a6a987bd65cc8fa62a8d350b09a3086e2`。
 
-事务为 `/var/lib/p85-rt0-deploy/20261120-motor-demo-01`。本次 boot `8c2102a9-c60c-438a-a8aa-057cedd88710` 的 SRAM 仍为旧程序，负向验收因镜像不符失败，未误接受。新 accept 服务与 15 分钟回退 timer 已 enabled、当前 inactive，等待整板主电源断电上电。新 R0 默认 OFF，自动验收不发运动命令；通过后取消回退，失败则恢复原 R0 Flash 且不自动重启。
+事务为 `/var/lib/p85-rt0-deploy/20261120-motor-demo-01`。在整板冷启动前，boot `8c2102a9-c60c-438a-a8aa-057cedd88710` 的 SRAM 仍为旧程序，负向验收因镜像不符失败，未误接受。当时 accept 服务与 15 分钟回退 timer 已 enabled，等待重新上电。新 R0 默认 OFF，自动验收不发运动命令；验收结果见本节后续记录。
 
 WSL 9/9、板端 Linux 11/11 软件测试通过，不能代替本次新镜像的运行或电机实测。动作、命令、备份和完整证据见 [MOTOR_DEMO.md](MOTOR_DEMO.md)。下文均为历史轮次。
 
